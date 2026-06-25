@@ -1,6 +1,11 @@
 # Origami
 
-Origami 是一款 macOS 菜单栏工具，把多个应用窗口像浏览器标签页一样折叠成组，并在窗口上方叠加标签栏，实现快速、无痕的窗口切换。
+<p>
+  <strong>Origami</strong> /ˌɔːrɪˈɡɑːmi/
+  <audio controls preload="none" src="web/public/origami-pronunciation.mp3" style="height:22px;vertical-align:middle;margin-left:4px;"></audio>
+</p>
+
+Origami 是一款 macOS 菜单栏工具，把多个应用窗口像浏览器标签页一样折叠成组，并在窗口上方叠加标签栏，实现快速、无痕的窗口切换。开发者：[大不6仙](https://space.bilibili.com/12724008)
 
 > 像折纸一样，把散落的窗口叠成一组，需要时再展开。
 

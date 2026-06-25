@@ -8,8 +8,8 @@ const navItems = [
 ];
 ---
 
-<header class="sticky top-0 z-50 border-b border-sky-200/50 bg-white/60 backdrop-blur-xl">
-  <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+<header id="site-header" class="site-header fixed inset-x-0 top-0 z-50">
+  <div class="site-header-bar mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
     <a href="#" class="group flex items-center gap-3">
       <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 text-sm font-bold text-white shadow-lg shadow-cyan-500/25">
         O
@@ -56,3 +56,55 @@ const navItems = [
     </div>
   </div>
 </header>
+
+<style>
+  .site-header {
+    padding: 0;
+    transition: padding 0.3s ease;
+  }
+
+  .site-header-bar {
+    transition:
+      background-color 0.3s ease,
+      border-color 0.3s ease,
+      box-shadow 0.3s ease,
+      backdrop-filter 0.3s ease,
+      border-radius 0.3s ease;
+  }
+
+  .site-header.is-scrolled {
+    padding: 0.75rem 1rem 0;
+  }
+
+  .site-header.is-scrolled .site-header-bar {
+    border: 1px solid rgb(255 255 255 / 0.75);
+    border-radius: 1rem;
+    background: rgb(255 255 255 / 0.72);
+    box-shadow:
+      0 4px 24px rgb(14 116 144 / 0.08),
+      0 1px 3px rgb(15 23 42 / 0.06);
+    backdrop-filter: blur(20px);
+  }
+
+  @media (min-width: 768px) {
+    .site-header.is-scrolled {
+      padding: 1rem 1.5rem 0;
+    }
+
+    .site-header.is-scrolled .site-header-bar {
+      border-radius: 1.25rem;
+    }
+  }
+</style>
+
+<script>
+  const header = document.getElementById('site-header');
+  const threshold = 12;
+
+  function updateHeader() {
+    header?.classList.toggle('is-scrolled', window.scrollY > threshold);
+  }
+
+  updateHeader();
+  window.addEventListener('scroll', updateHeader, { passive: true });
+</script>

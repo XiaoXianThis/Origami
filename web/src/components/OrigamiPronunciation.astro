@@ -1,0 +1,35 @@
+---
+interface Props {
+  class?: string;
+}
+
+const { class: className = '' } = Astro.props;
+---
+
+<span class:list={['origami-pronunciation inline-flex items-center gap-1.5', className]}>
+  <span class="font-semibold text-inherit">Origami</span>
+  <span class="font-normal text-slate-500">/ˌɔːrɪˈɡɑːmi/</span>
+  <button
+    type="button"
+    class="pronounce-btn inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-cyan-50 hover:text-cyan-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-cyan-500"
+    aria-label="播放 Origami 读音"
+  >
+    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
+    </svg>
+  </button>
+  <audio src="/origami-pronunciation.mp3" preload="none" class="sr-only"></audio>
+</span>
+
+<script>
+  document.querySelectorAll('.origami-pronunciation').forEach((root) => {
+    const btn = root.querySelector('.pronounce-btn');
+    const audio = root.querySelector('audio');
+    if (!btn || !audio) return;
+
+    btn.addEventListener('click', () => {
+      audio.currentTime = 0;
+      void audio.play();
+    });
+  });
+</script>
