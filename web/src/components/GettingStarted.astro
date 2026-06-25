@@ -1,12 +1,13 @@
 ---
 const releaseVersion = '0.1.0';
-const downloadUrl = `https://github.com/XiaoXianThis/Origami/releases/download/v${releaseVersion}/Origami-v${releaseVersion}-macos-universal.zip`;
+const dmgUrl = `https://github.com/XiaoXianThis/Origami/releases/download/v${releaseVersion}/Origami-v${releaseVersion}-macos-universal.dmg`;
+const zipUrl = `https://github.com/XiaoXianThis/Origami/releases/download/v${releaseVersion}/Origami-v${releaseVersion}-macos-universal.zip`;
 const releaseUrl = `https://github.com/XiaoXianThis/Origami/releases/tag/v${releaseVersion}`;
 
 const installSteps = [
   {
-    title: '下载并解压',
-    detail: '从 GitHub Releases 下载 zip，解压后将 Origami.app 拖入「应用程序」文件夹。',
+    title: '下载并安装',
+    detail: '打开 DMG，将 Origami 拖入「应用程序」文件夹。也可下载 zip 手动解压安装。',
   },
   {
     title: '首次打开',
@@ -42,10 +43,16 @@ const usageSteps = [
 
         <div class="mt-8 flex flex-wrap items-center gap-4">
           <a
-            href={downloadUrl}
+            href={dmgUrl}
             class="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-amber-300 to-orange-400 px-6 py-3 text-sm font-semibold text-stone-900 shadow-lg shadow-amber-500/25 transition hover:brightness-110"
           >
-            下载 v{releaseVersion}
+            下载 DMG v{releaseVersion}
+          </a>
+          <a
+            href={zipUrl}
+            class="inline-flex items-center justify-center rounded-full border border-white/10 px-6 py-3 text-sm font-medium text-stone-200 transition hover:border-white/20 hover:bg-white/5"
+          >
+            下载 ZIP
           </a>
           <a
             href={releaseUrl}
@@ -130,7 +137,7 @@ open dist/Origami.app`}</code></pre>
     </p>
     <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
       <a
-        href={downloadUrl}
+        href={dmgUrl}
         class="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-stone-900 transition hover:bg-amber-50"
       >
         下载 Origami

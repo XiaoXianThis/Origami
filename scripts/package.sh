@@ -56,7 +56,24 @@ echo "==> Creating $ZIP_NAME"
 rm -f "$ZIP_PATH"
 ditto -c -k --keepParent "$APP_DIR" "$ZIP_PATH"
 
+DMG_NAME="${APP_NAME}-v${VERSION}-macos-${ARCH_MODE}.dmg"
+DMG_PATH="$DIST_DIR/$DMG_NAME"
+
+echo "==> Creating $DMG_NAME"
+DMG_STAGING="$(mktemp -d)"
+trap 'rm -rf "$DMG_STAGING"' EXIT
+cp -R "$APP_DIR" "$DMG_STAGING/"
+ln -s /Applications "$DMG_STAGING/Applications"
+rm -f "$DMG_PATH"
+hdiutil create \
+  -volname "$APP_NAME" \
+  -srcfolder "$DMG_STAGING" \
+  -ov \
+  -format UDZO \
+  "$DMG_PATH" >/dev/null
+
 echo "==> Done"
 echo "App:  $APP_DIR"
 echo "Zip:  $ZIP_PATH"
+echo "Dmg:  $DMG_PATH"
 file "$APP_DIR/Contents/MacOS/Origami"
