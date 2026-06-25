@@ -118,11 +118,8 @@ function layoutCascadeLeft(desktopWidth: number, desktopHeight: number) {
   const tier = getWindowSizeTier();
   const spanSteps = CASCADE_WINDOW_IDS.length - 1;
   const pad = 12;
-  const copyPanel = $('#demo-section-copy');
-  const panelW = copyPanel?.offsetWidth ?? desktopWidth * 0.28;
-  const zoneGap = 20;
-  const leftZoneW = desktopWidth - panelW - zoneGap - pad;
-  const availW = Math.max(tier.minWinW, leftZoneW - pad);
+  const leftZoneW = desktopWidth - pad * 2;
+  const availW = Math.max(tier.minWinW, leftZoneW);
   const availH = desktopHeight - TABBAR_FLOAT_H - pad * 2;
 
   let step = tier.cascadeStep;

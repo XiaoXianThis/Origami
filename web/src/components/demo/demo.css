@@ -2,6 +2,7 @@
 
 .demo-root {
   --demo-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  --demo-window-radius: 16px;
   --demo-tab-h: 22px;
   --demo-tab-gap: 4px;
   --demo-tab-active: rgba(255, 255, 255, 0.95);
@@ -71,7 +72,7 @@
 
 .demo-window {
   position: relative;
-  border-radius: 10px;
+  border-radius: var(--demo-window-radius);
   overflow: hidden;
   box-shadow:
     0 0 0 0.5px rgba(0, 0, 0, 0.12),
@@ -203,7 +204,7 @@
 .demo-drop-highlight {
   position: absolute;
   inset: 6px;
-  border-radius: 14px;
+  border-radius: calc(var(--demo-window-radius) + 4px);
   border: 2px solid rgba(0, 122, 255, 0.55);
   background: rgba(0, 122, 255, 0.12);
   pointer-events: none;
