@@ -2,18 +2,19 @@
 const navItems = [
   { href: '#features', label: '功能' },
   { href: '#hide-modes', label: '隐藏方式' },
+  { href: '#demo', label: '演示' },
   { href: '#download', label: '下载' },
   { href: '#getting-started', label: '开始使用' },
 ];
 ---
 
-<header class="sticky top-0 z-50 border-b border-white/5 bg-[#0f1117]/80 backdrop-blur-xl">
+<header class="sticky top-0 z-50 border-b border-sky-200/50 bg-white/60 backdrop-blur-xl">
   <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
     <a href="#" class="group flex items-center gap-3">
-      <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-300 to-orange-500 text-sm font-bold text-stone-900 shadow-lg shadow-amber-500/20">
+      <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 text-sm font-bold text-white shadow-lg shadow-cyan-500/25">
         O
       </span>
-      <span class="text-lg font-semibold tracking-tight text-white group-hover:text-amber-100 transition-colors">
+      <span class="text-lg font-semibold tracking-tight text-slate-900 transition-colors group-hover:text-cyan-700">
         Origami
       </span>
     </a>
@@ -22,31 +23,36 @@ const navItems = [
       {navItems.map((item) => (
         <a
           href={item.href}
-          class="text-sm text-stone-400 transition-colors hover:text-white"
+          class:list={[
+            'text-sm text-slate-600 transition-colors hover:text-cyan-700',
+            item.href === '#demo' && 'demo-hide-narrow-portrait',
+          ]}
         >
           {item.label}
         </a>
       ))}
     </nav>
 
-    <a
-      href="https://github.com/XiaoXianThis/Origami/releases/latest"
-      target="_blank"
-      rel="noopener noreferrer"
-      class="inline-flex items-center gap-2 rounded-full border border-amber-400/20 bg-amber-400/10 px-4 py-2 text-sm font-medium text-amber-100 transition hover:border-amber-400/40 hover:bg-amber-400/15"
-    >
-      下载
-    </a>
-    <a
-      href="https://github.com/XiaoXianThis/Origami"
-      target="_blank"
-      rel="noopener noreferrer"
-      class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-stone-200 transition hover:border-amber-400/30 hover:bg-amber-400/10 hover:text-amber-100"
-    >
-      GitHub
-      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-      </svg>
-    </a>
+    <div class="flex items-center gap-3">
+      <a
+        href="https://github.com/XiaoXianThis/Origami/releases/latest"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-flex items-center gap-2 rounded-full border border-cyan-300/50 bg-cyan-50/80 px-4 py-2 text-sm font-medium text-cyan-800 transition hover:border-cyan-400/60 hover:bg-cyan-100/80"
+      >
+        下载
+      </a>
+      <a
+        href="https://github.com/XiaoXianThis/Origami"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-flex items-center gap-2 rounded-full border border-sky-200/80 bg-white/50 px-4 py-2 text-sm font-medium text-slate-700 backdrop-blur-sm transition hover:border-cyan-300/60 hover:bg-white/80 hover:text-cyan-800"
+      >
+        GitHub
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+        </svg>
+      </a>
+    </div>
   </div>
 </header>

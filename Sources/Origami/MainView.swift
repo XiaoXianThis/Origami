@@ -32,7 +32,7 @@ struct MainView: View {
 
     private var hideMode: Binding<WindowHideMode> {
         Binding(
-            get: { WindowHideMode(rawValue: hideModeRawValue) ?? .transparent },
+            get: { WindowHideMode(rawValue: hideModeRawValue) ?? AppSettings.defaultHideMode },
             set: { hideModeRawValue = $0.rawValue }
         )
     }

@@ -1,0 +1,272 @@
+/* macOS 桌面演示 — 独立样式，不影响主站 */
+
+.demo-root {
+  --demo-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  --demo-tab-h: 22px;
+  --demo-tab-gap: 4px;
+  --demo-tab-active: rgba(255, 255, 255, 0.95);
+  --demo-tab-inactive: rgba(255, 255, 255, 0.55);
+  --demo-tab-border: rgba(0, 0, 0, 0.08);
+  --demo-titlebar-h: 36px;
+  --demo-tabbar-h: 26px;
+  --demo-tabbar-gap: 4px;
+
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  background: transparent;
+  font-family: var(--demo-font);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 桌面区域 */
+.demo-desktop {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+
+/* 引导光标动画 */
+.demo-guide-cursor {
+  position: absolute;
+  z-index: 9000;
+  pointer-events: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  left: 0;
+  top: 0;
+  will-change: left, top, opacity;
+}
+
+.demo-guide-cursor.hidden {
+  display: none;
+}
+
+.demo-guide-cursor-chip {
+  margin-top: 2px;
+  padding: 3px 10px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.82);
+  background: rgba(255, 255, 255, 0.95);
+  border: 0.5px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  white-space: nowrap;
+}
+
+.demo-window-group {
+  position: absolute;
+  transition: left 0.15s ease, top 0.15s ease, width 0.2s ease;
+}
+
+.demo-window-group.hidden-in-group {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.demo-window {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.12),
+    0 12px 40px rgba(15, 50, 90, 0.13),
+    0 4px 14px rgba(15, 50, 90, 0.08);
+  display: flex;
+  flex-direction: column;
+  background: #ececec;
+  transition:
+    box-shadow 0.15s ease,
+    height 0.2s ease,
+    width 0.2s ease;
+}
+
+.demo-window.focused {
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.16),
+    0 20px 56px rgba(15, 50, 90, 0.18),
+    0 8px 20px rgba(15, 50, 90, 0.11);
+}
+
+.demo-titlebar {
+  height: var(--demo-titlebar-h);
+  background: linear-gradient(180deg, #ebebeb 0%, #e3e3e3 100%);
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.12);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  cursor: grab;
+}
+
+.demo-titlebar:active {
+  cursor: grabbing;
+}
+
+.demo-titlebar-top {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0 14px;
+  gap: 8px;
+}
+
+.demo-traffic {
+  display: flex;
+  gap: 7px;
+}
+
+.demo-traffic span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 0.5px solid rgba(0, 0, 0, 0.08);
+}
+
+.demo-traffic .close { background: #ff5f57; }
+.demo-traffic .minimize { background: #febc2e; }
+.demo-traffic .maximize { background: #28c840; }
+
+.demo-window-title {
+  flex: 1;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.55);
+  margin-right: 52px;
+}
+
+/* Origami 标签栏 — 窗口外右上角浮动 */
+.demo-tabbar-float {
+  position: absolute;
+  top: calc(-1 * (var(--demo-tabbar-h) + var(--demo-tabbar-gap)));
+  right: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: auto;
+}
+
+.demo-tabbar {
+  display: flex;
+  align-items: center;
+  gap: var(--demo-tab-gap);
+  padding: 0;
+  min-height: var(--demo-tabbar-h);
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+
+.demo-tab {
+  height: var(--demo-tab-h);
+  min-width: 56px;
+  max-width: 160px;
+  padding: 0 10px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  background: var(--demo-tab-inactive);
+  color: rgba(0, 0, 0, 0.55);
+  border: 0.5px solid var(--demo-tab-border);
+  transition: background 0.12s, color 0.12s, transform 0.12s;
+  flex-shrink: 0;
+}
+
+.demo-tab.active {
+  background: var(--demo-tab-active);
+  color: rgba(0, 0, 0, 0.88);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.demo-tab:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.demo-tab.dragging {
+  opacity: 0.35;
+}
+
+/* 对齐 WindowDropHighlightView：拖入窗口主体时的蓝色高亮 */
+.demo-drop-highlight {
+  position: absolute;
+  inset: 6px;
+  border-radius: 14px;
+  border: 2px solid rgba(0, 122, 255, 0.55);
+  background: rgba(0, 122, 255, 0.12);
+  pointer-events: none;
+  z-index: 20;
+  animation: demo-drop-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes demo-drop-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.72; }
+}
+
+/* 窗口内容 — 纯示意占位 */
+.demo-content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.demo-content-placeholder {
+  height: 100%;
+  background: #f4f4f5;
+}
+
+.demo-content-placeholder[data-app='safari'] {
+  background: linear-gradient(180deg, #fafafa 0%, #f0f0f2 100%);
+}
+
+.demo-content-placeholder[data-app='notes'] {
+  background: linear-gradient(180deg, #faf8f0 0%, #f3f0e6 100%);
+}
+
+.demo-content-placeholder[data-app='terminal'] {
+  background: linear-gradient(180deg, #2a2a2e 0%, #1e1e22 100%);
+}
+
+/* 拖拽幽灵标签 */
+.demo-drag-ghost {
+  position: fixed;
+  z-index: 10000;
+  pointer-events: none;
+  height: var(--demo-tab-h);
+  min-width: 56px;
+  max-width: 160px;
+  padding: 0 10px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.95);
+  color: rgba(0, 0, 0, 0.88);
+  border: 0.5px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 14px rgba(15, 50, 90, 0.1);
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 768px) {
+  .demo-window-group {
+    max-width: calc(100vw - 24px) !important;
+  }
+}

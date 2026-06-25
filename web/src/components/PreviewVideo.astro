@@ -1,0 +1,136 @@
+---
+const videoSrc = '/preview.mp4';
+---
+
+<div class="preview-video relative" data-preview-video>
+  <button
+    type="button"
+    class="group relative block w-full cursor-pointer text-left"
+    data-preview-trigger
+    aria-label="点击放大播放演示视频"
+  >
+    <div class="relative overflow-hidden rounded-[1.75rem]">
+      <div class="relative aspect-video bg-black">
+        <video
+          class="h-full w-full object-cover"
+          src={videoSrc}
+          autoplay
+          loop
+          muted
+          playsinline
+          preload="auto"
+          data-preview-inline
+        ></video>
+
+        <div
+          class="pointer-events-none absolute inset-x-0 top-0 z-[1] flex items-center gap-2 bg-gradient-to-b from-black/60 via-black/25 to-transparent px-4 pb-10 pt-3"
+          aria-hidden="true"
+        >
+          <span class="h-3 w-3 rounded-full bg-[#ff5f57] shadow-sm ring-1 ring-black/10"></span>
+          <span class="h-3 w-3 rounded-full bg-[#febc2e] shadow-sm ring-1 ring-black/10"></span>
+          <span class="h-3 w-3 rounded-full bg-[#28c840] shadow-sm ring-1 ring-black/10"></span>
+          <span class="ml-3 text-xs font-medium text-white/75">Origami 演示</span>
+        </div>
+
+        <div
+          class="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center bg-black/0 transition group-hover:bg-black/25"
+          aria-hidden="true"
+        >
+          <span
+            class="flex items-center gap-2 rounded-full border border-white/20 bg-black/50 px-4 py-2 text-sm font-medium text-white opacity-0 backdrop-blur-sm transition group-hover:opacity-100"
+          >
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M8 5v14l11-7z"></path>
+            </svg>
+            点击放大
+          </span>
+        </div>
+      </div>
+    </div>
+  </button>
+
+  <dialog
+    class="preview-video-modal fixed inset-0 z-50 m-0 h-full max-h-none w-full max-w-none border-0 bg-transparent p-0 backdrop:bg-black/80 open:flex open:items-center open:justify-center"
+    data-preview-modal
+    aria-label="演示视频"
+  >
+    <div class="relative w-[min(96vw,90rem)] px-2 sm:px-4">
+      <div class="relative overflow-hidden rounded-2xl bg-black">
+        <video
+          class="block max-h-[85vh] w-full"
+          src={videoSrc}
+          controls
+          playsinline
+          preload="auto"
+          data-preview-modal-video
+        ></video>
+
+        <div class="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between bg-gradient-to-b from-black/60 via-black/25 to-transparent px-4 pb-10 pt-3">
+          <div class="flex items-center gap-2">
+            <span class="h-3 w-3 rounded-full bg-[#ff5f57] shadow-sm ring-1 ring-black/10"></span>
+            <span class="h-3 w-3 rounded-full bg-[#febc2e] shadow-sm ring-1 ring-black/10"></span>
+            <span class="h-3 w-3 rounded-full bg-[#28c840] shadow-sm ring-1 ring-black/10"></span>
+            <span class="ml-3 text-xs font-medium text-white/75">Origami 演示</span>
+          </div>
+
+          <button
+            type="button"
+            class="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-sm transition hover:bg-white/20"
+            data-preview-close
+            aria-label="关闭"
+          >
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M18 6 6 18M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+</div>
+
+<script>
+  function initPreviewVideos() {
+    document.querySelectorAll<HTMLElement>('[data-preview-video]').forEach((root) => {
+      if (root.dataset.previewBound === 'true') return;
+      root.dataset.previewBound = 'true';
+
+      const trigger = root.querySelector<HTMLButtonElement>('[data-preview-trigger]');
+      const dialog = root.querySelector<HTMLDialogElement>('[data-preview-modal]');
+      const inlineVideo = root.querySelector<HTMLVideoElement>('[data-preview-inline]');
+      const modalVideo = root.querySelector<HTMLVideoElement>('[data-preview-modal-video]');
+      const closeBtn = root.querySelector<HTMLButtonElement>('[data-preview-close]');
+
+      if (!trigger || !dialog || !inlineVideo || !modalVideo || !closeBtn) return;
+
+      const openModal = () => {
+        modalVideo.currentTime = inlineVideo.currentTime;
+        inlineVideo.pause();
+        dialog.showModal();
+        modalVideo.play().catch(() => {});
+      };
+
+      const closeModal = () => {
+        inlineVideo.currentTime = modalVideo.currentTime;
+        modalVideo.pause();
+        dialog.close();
+        inlineVideo.play().catch(() => {});
+      };
+
+      trigger.addEventListener('click', openModal);
+      closeBtn.addEventListener('click', closeModal);
+
+      dialog.addEventListener('click', (event) => {
+        if (event.target === dialog) closeModal();
+      });
+
+      dialog.addEventListener('cancel', (event) => {
+        event.preventDefault();
+        closeModal();
+      });
+    });
+  }
+
+  initPreviewVideos();
+  document.addEventListener('astro:page-load', initPreviewVideos);
+</script>

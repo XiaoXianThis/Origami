@@ -42,26 +42,26 @@ const icons: Record<string, string> = {
 };
 ---
 
-<section id="features" class="border-t border-white/5 px-6 py-24">
+<section id="features" class="border-t border-sky-200/50 px-6 py-24">
   <div class="mx-auto max-w-6xl">
     <div class="max-w-2xl">
-      <p class="text-sm font-medium uppercase tracking-[0.2em] text-amber-300/80">Features</p>
-      <h2 class="mt-3 text-3xl font-semibold tracking-tight text-white md:text-4xl">为 macOS 多窗口场景而生</h2>
-      <p class="mt-4 text-lg leading-8 text-stone-400">
+      <p class="section-label">Features</p>
+      <h2 class="mt-3 text-3xl font-semibold tracking-tight text-slate-900 md:text-4xl">为 macOS 多窗口场景而生</h2>
+      <p class="mt-4 text-lg leading-8 text-slate-600">
         不是简单的窗口管理器，而是把「标签页思维」带到原生应用窗口上——分组、切换、隐藏，一气呵成。
       </p>
     </div>
 
     <div class="mt-14 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
       {features.map((feature) => (
-        <article class="group rounded-2xl border border-white/5 bg-white/[0.02] p-6 transition hover:border-amber-400/20 hover:bg-amber-400/[0.03]">
-          <div class="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-amber-400/10 text-amber-300 ring-1 ring-amber-400/20">
+        <article class="group glass-card p-6 transition hover:border-cyan-300/50 hover:bg-white/70 hover:shadow-cyan-500/10">
+          <div class="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-100/80 text-cyan-700 ring-1 ring-cyan-300/40">
             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
               <path stroke-linecap="round" stroke-linejoin="round" d={icons[feature.icon]} />
             </svg>
           </div>
-          <h3 class="text-lg font-semibold text-white">{feature.title}</h3>
-          <p class="mt-3 text-sm leading-7 text-stone-400">{feature.description}</p>
+          <h3 class="text-lg font-semibold text-slate-900">{feature.title}</h3>
+          <p class="mt-3 text-sm leading-7 text-slate-600">{feature.description}</p>
         </article>
       ))}
     </div>

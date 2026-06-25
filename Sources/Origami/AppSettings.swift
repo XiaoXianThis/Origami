@@ -152,6 +152,7 @@ enum AppSettings {
     static let defaultLabelOffsetX: Double = 0
     static let defaultLabelOffsetY: Double = 0
     static let defaultTheme = AppTheme.system
+    static let defaultHideMode = WindowHideMode.moveOffscreen
     static let defaultWindowSwitchSizeMode = WindowSwitchSizeMode.matchCurrent
     static let defaultTabMinWidth: Double = 120
     static let defaultLabelMaxWidth: Double = 120
@@ -195,8 +196,8 @@ enum AppSettings {
 
     static var hideMode: WindowHideMode {
         get {
-            let rawValue = UserDefaults.standard.string(forKey: hideModeKey) ?? WindowHideMode.transparent.rawValue
-            return WindowHideMode(rawValue: rawValue) ?? .transparent
+            let rawValue = UserDefaults.standard.string(forKey: hideModeKey) ?? defaultHideMode.rawValue
+            return WindowHideMode(rawValue: rawValue) ?? defaultHideMode
         }
         set {
             UserDefaults.standard.set(newValue.rawValue, forKey: hideModeKey)

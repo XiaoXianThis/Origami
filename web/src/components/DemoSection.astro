@@ -1,0 +1,192 @@
+---
+import MacOSDemo from './demo/MacOSDemo.astro';
+---
+
+<section id="demo" class="demo-hide-narrow-portrait scroll-mt-16 overflow-visible px-[1vw] py-[1vh]">
+  <div class="demo-section-frame">
+    <MacOSDemo />
+
+    <aside class="demo-section-copy" id="demo-section-copy" aria-label="演示说明">
+      <div class="demo-copy-accent" aria-hidden="true"></div>
+
+      <p class="demo-copy-label">在线体验</p>
+      <h2 class="demo-copy-title">
+        亲手试试
+        <span class="text-gradient-brand">Origami</span>
+      </h2>
+      <p class="demo-copy-lead">
+        把多个 macOS 窗口合并成组，在窗口外叠加标签栏——像切换浏览器标签一样，快速、无痕地切换。
+      </p>
+
+      <ol class="demo-guide-steps" id="demo-guide-steps">
+        <li class="demo-guide-step is-active" data-step="0">
+          <span class="demo-guide-num">01</span>
+          <div class="demo-guide-body">
+            <p class="demo-guide-title">拖动标签</p>
+            <p class="demo-guide-desc">按住窗口外的标签，拖向另一个窗口</p>
+          </div>
+        </li>
+        <li class="demo-guide-step" data-step="1">
+          <span class="demo-guide-num">02</span>
+          <div class="demo-guide-body">
+            <p class="demo-guide-title">拖入合并</p>
+            <p class="demo-guide-desc">释放在目标窗口上，合并为同一组</p>
+          </div>
+        </li>
+        <li class="demo-guide-step" data-step="2">
+          <span class="demo-guide-num">03</span>
+          <div class="demo-guide-body">
+            <p class="demo-guide-title">点击切换</p>
+            <p class="demo-guide-desc">在标签栏点击，即时切换组内窗口</p>
+          </div>
+        </li>
+      </ol>
+    </aside>
+  </div>
+</section>
+
+<style>
+  .demo-section-frame {
+    position: relative;
+    width: 85vw;
+    max-width: 1000px;
+    height: min(72vh, 640px);
+    margin: 0 auto;
+    overflow: visible;
+    --demo-copy-ratio: 28%;
+    --demo-zone-gap: 20px;
+  }
+
+  .demo-section-copy {
+    position: absolute;
+    right: var(--demo-zone-gap);
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1;
+    width: calc(var(--demo-copy-ratio) - var(--demo-zone-gap));
+    max-height: 88%;
+    padding: 0 clamp(0.5rem, 1vw, 1rem);
+    background: none;
+    border: none;
+    box-shadow: none;
+    overflow-y: auto;
+    pointer-events: none;
+  }
+
+  .demo-section-copy > * {
+    pointer-events: auto;
+  }
+
+  .demo-copy-accent {
+    width: 2.5rem;
+    height: 3px;
+    margin-bottom: 0.75rem;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #00d4ff, #0099cc, #0056b3);
+    opacity: 0.85;
+  }
+
+  .demo-copy-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #0099cc;
+  }
+
+  .demo-copy-title {
+    margin-top: 0.5rem;
+    font-size: clamp(1.25rem, 1.85vw, 1.625rem);
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    color: #0f172a;
+  }
+
+  .demo-copy-lead {
+    margin-top: 0.65rem;
+    font-size: clamp(0.8125rem, 1vw, 0.9375rem);
+    line-height: 1.65;
+    color: #475569;
+  }
+
+  .demo-guide-steps {
+    list-style: none;
+    padding: 0;
+    margin: clamp(0.85rem, 1.5vh, 1.25rem) 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .demo-guide-step {
+    display: flex;
+    gap: 0.85rem;
+    align-items: flex-start;
+    padding: 0.5rem 0;
+    border-left: 2px solid transparent;
+    padding-left: 0.75rem;
+    transition:
+      border-color 0.35s ease,
+      opacity 0.35s ease;
+  }
+
+  .demo-guide-step.is-active {
+    border-left-color: #00b7eb;
+  }
+
+  .demo-guide-step:not(.is-active) {
+    opacity: 0.55;
+  }
+
+  .demo-guide-num {
+    flex-shrink: 0;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: #0099cc;
+    opacity: 0.7;
+    padding-top: 0.15rem;
+    transition: opacity 0.35s ease, color 0.35s ease;
+  }
+
+  .demo-guide-step.is-active .demo-guide-num {
+    opacity: 1;
+    color: #007bb8;
+  }
+
+  .demo-guide-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #0f172a;
+  }
+
+  .demo-guide-desc {
+    margin-top: 0.2rem;
+    font-size: 0.8125rem;
+    line-height: 1.55;
+    color: #64748b;
+  }
+
+  .demo-guide-step.is-active .demo-guide-title {
+    color: #0369a1;
+  }
+
+  @media (max-width: 900px) {
+    .demo-section-frame {
+      --demo-copy-ratio: 100%;
+      width: 92vw;
+      height: min(78vh, 620px);
+    }
+
+    .demo-section-copy {
+      right: 10px;
+      left: 10px;
+      top: auto;
+      bottom: 10px;
+      transform: none;
+      width: auto;
+      max-height: 42%;
+    }
+  }
+</style>

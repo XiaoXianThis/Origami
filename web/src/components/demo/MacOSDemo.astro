@@ -1,0 +1,19 @@
+---
+import './demo.css';
+---
+
+<div class="demo-root" id="demo-root">
+  <div class="demo-desktop" id="demo-desktop"></div>
+
+  <div class="demo-guide-cursor hidden" id="demo-guide-cursor" aria-hidden="true">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <path d="M5 3l12 8.5L11 13l2 8.5L5 3z" fill="#1e293b" stroke="#fff" stroke-width="1.2"/>
+    </svg>
+    <span class="demo-guide-cursor-chip" id="demo-guide-chip">备忘录</span>
+  </div>
+</div>
+
+<script>
+  import { initDemo } from './demo.ts';
+  initDemo();
+</script>

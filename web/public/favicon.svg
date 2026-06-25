@@ -1,6 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <rect width="64" height="64" rx="16" fill="#171923"/>
-  <path d="M14 46L32 18L50 46H14Z" fill="#FBBF24" opacity="0.95"/>
-  <path d="M32 18L50 46L38 46L32 36L26 46L14 46L32 18Z" fill="#F97316" opacity="0.85"/>
-  <path d="M26 46H38L32 36L26 46Z" fill="#FDE68A"/>
+  <rect width="64" height="64" rx="16" fill="url(#bg)"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#00D4FF"/>
+      <stop offset="1" stop-color="#0056B3"/>
+    </linearGradient>
+  </defs>
+  <path d="M14 46L32 18L50 46H14Z" fill="#E0F7FF" opacity="0.95"/>
+  <path d="M32 18L50 46L38 46L32 36L26 46L14 46L32 18Z" fill="#7DD3FC" opacity="0.9"/>
+  <path d="M26 46H38L32 36L26 46Z" fill="#FFFFFF"/>
 </svg>
