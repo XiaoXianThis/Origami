@@ -1,0 +1,75 @@
+---
+const steps = [
+  '启动 Origami，它会常驻菜单栏',
+  '点击菜单栏图标 →「显示窗口」打开设置',
+  '将窗口拖入同一组，或通过标签栏操作合并 / 切换',
+  '在设置中选择隐藏方式、标签位置等偏好',
+];
+
+const buildCommands = `git clone https://github.com/XiaoXianThis/Origami.git
+cd Origami
+swift build -c release
+.build/release/Origami`;
+---
+
+<section id="getting-started" class="border-t border-white/5 px-6 py-24">
+  <div class="mx-auto max-w-6xl">
+    <div class="grid gap-12 lg:grid-cols-2">
+      <div>
+        <p class="text-sm font-medium uppercase tracking-[0.2em] text-amber-300/80">Getting Started</p>
+        <h2 class="mt-3 text-3xl font-semibold tracking-tight text-white md:text-4xl">几分钟即可上手</h2>
+        <p class="mt-4 text-lg leading-8 text-stone-400">
+          Origami 目前通过源码构建运行。支持 macOS 13 Ventura 及以上，Apple Silicon 与 Intel 均可。
+        </p>
+
+        <ol class="mt-8 space-y-4">
+          {steps.map((step, index) => (
+            <li class="flex gap-4">
+              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-400/15 text-sm font-semibold text-amber-200">
+                {index + 1}
+              </span>
+              <span class="pt-1 text-stone-300">{step}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      <div class="rounded-[1.5rem] border border-white/10 bg-[#171923] p-6 shadow-2xl shadow-black/30">
+        <div class="mb-4 flex items-center justify-between">
+          <span class="text-sm font-medium text-stone-300">Terminal</span>
+          <span class="rounded-full bg-white/5 px-2 py-1 text-xs text-stone-500">bash</span>
+        </div>
+        <pre class="overflow-x-auto rounded-2xl bg-black/40 p-5 text-sm leading-7 text-stone-300"><code>{buildCommands}</code></pre>
+        <p class="mt-4 text-sm text-stone-500">
+          调试构建可使用 <code class="rounded bg-white/5 px-1.5 py-0.5 text-stone-300">swift build</code>，产物位于
+          <code class="rounded bg-white/5 px-1.5 py-0.5 text-stone-300">.build/debug/Origami</code>。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="border-t border-white/5 px-6 py-20">
+  <div class="mx-auto max-w-4xl rounded-[2rem] border border-amber-400/20 bg-gradient-to-br from-amber-400/10 via-[#171923] to-orange-500/10 px-8 py-12 text-center md:px-12">
+    <h2 class="text-3xl font-semibold tracking-tight text-white">把散落的窗口，折成整齐的一组</h2>
+    <p class="mx-auto mt-4 max-w-2xl text-lg leading-8 text-stone-400">
+      Origami 为重度多窗口用户设计——写代码、查资料、对文档，标签一切换，思路不中断。
+    </p>
+    <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
+      <a
+        href="https://github.com/XiaoXianThis/Origami"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-stone-900 transition hover:bg-amber-50"
+      >
+        Star on GitHub
+      </a>
+      <a
+        href="#features"
+        class="inline-flex items-center justify-center rounded-full border border-white/10 px-6 py-3 text-sm font-medium text-stone-200 transition hover:bg-white/5"
+      >
+        了解更多
+      </a>
+    </div>
+  </div>
+</section>

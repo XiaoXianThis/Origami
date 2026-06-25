@@ -1,0 +1,20 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import Hero from '../components/Hero.astro';
+import FeatureGrid from '../components/FeatureGrid.astro';
+import HideModes from '../components/HideModes.astro';
+import GettingStarted from '../components/GettingStarted.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+---
+
+<BaseLayout>
+  <SiteHeader />
+  <main>
+    <Hero />
+    <FeatureGrid />
+    <HideModes />
+    <GettingStarted />
+  </main>
+  <SiteFooter />
+</BaseLayout>

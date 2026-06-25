@@ -1,6 +1,20 @@
+# Swift
 .build/
 .swiftpm/
-.DS_Store
 *.xcodeproj
 *.xcworkspace
 xcuserdata/
+
+# Web
+web/dist/
+web/.astro/
+web/node_modules/
+
+# macOS
+.DS_Store
+
+# Logs & env
+*.log
+.env
+.env.production
+.idea/
