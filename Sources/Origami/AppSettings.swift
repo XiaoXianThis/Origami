@@ -20,7 +20,6 @@ enum AppTheme: String, CaseIterable, Identifiable {
 enum WindowHideMode: String, CaseIterable, Identifiable {
     case minimize
     case transparent
-    case overlaySwitch
     case stackBehind
     case moveOffscreen
     case moveToSpace
@@ -32,7 +31,6 @@ enum WindowHideMode: String, CaseIterable, Identifiable {
         switch self {
         case .minimize: "最小化"
         case .transparent: "透明隐藏"
-        case .overlaySwitch: "Overlay 切换"
         case .stackBehind: "底层跟随"
         case .moveOffscreen: "移动到屏外"
         case .moveToSpace: "移动到其他桌面"
@@ -46,8 +44,6 @@ enum WindowHideMode: String, CaseIterable, Identifiable {
             "兼容性最好，但切换时会有最小化/恢复痕迹。"
         case .transparent:
             "更无痕，不进入 Dock 最小化区；不同 macOS 版本和 App 可能存在兼容差异。"
-        case .overlaySwitch:
-            "先用窗口快照遮住切换过程，再把真实窗口移到屏幕外；体感更接近瞬时切换。"
         case .stackBehind:
             "把非当前窗口移动到当前窗口底层，缩小到 90% 并居中跟随当前窗口。"
         case .moveOffscreen:
@@ -106,6 +102,35 @@ enum LabelPlacement: String, CaseIterable, Identifiable {
     }
 }
 
+struct TabSwitchShortcut: Equatable {
+    var keyCode: UInt16
+    var modifiers: UInt
+
+    static let `default` = TabSwitchShortcut(
+        keyCode: 48,
+        modifiers: NSEvent.ModifierFlags.shift.rawValue
+    )
+
+    var modifierFlags: NSEvent.ModifierFlags {
+        NSEvent.ModifierFlags(rawValue: modifiers)
+    }
+
+    /// 与 CGEventTap 捕获的全局按键比对，只比较 Command / Control / Option / Shift。
+    func matches(_ event: CGEvent) -> Bool {
+        let eventKeyCode = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
+        guard eventKeyCode == keyCode else { return false }
+
+        let relevantFlags: CGEventFlags = [.maskCommand, .maskControl, .maskAlternate, .maskShift]
+        let eventFlags = event.flags.intersection(relevantFlags)
+        let requiredFlags = CGEventFlags(rawValue: UInt64(modifiers))
+        return eventFlags == requiredFlags
+    }
+
+    var displayString: String {
+        ShortcutDisplay.string(keyCode: keyCode, modifiers: modifierFlags)
+    }
+}
+
 enum WindowSwitchSizeMode: String, CaseIterable, Identifiable {
     case matchCurrent
     case keepOriginal
@@ -145,6 +170,8 @@ enum AppSettings {
     static let restoreOnExitKey = "Origami.restoreOnExit"
     static let autoGroupSameAppWindowsKey = "Origami.autoGroupSameAppWindows"
     static let allowCrossAppGroupingKey = "Origami.allowCrossAppGrouping"
+    static let tabSwitchShortcutKeyCodeKey = "Origami.tabSwitchShortcutKeyCode"
+    static let tabSwitchShortcutModifiersKey = "Origami.tabSwitchShortcutModifiers"
 
     static let defaultDetachDelay: Double = 2
     static let minDetachDelay: Double = 0
@@ -204,12 +231,18 @@ enum AppSettings {
 
     static var hideMode: WindowHideMode {
         get {
+            migrateLegacySettingsIfNeeded()
             let rawValue = UserDefaults.standard.string(forKey: hideModeKey) ?? defaultHideMode.rawValue
             return WindowHideMode(rawValue: rawValue) ?? defaultHideMode
         }
         set {
             UserDefaults.standard.set(newValue.rawValue, forKey: hideModeKey)
         }
+    }
+
+    static func migrateLegacySettingsIfNeeded() {
+        guard UserDefaults.standard.string(forKey: hideModeKey) == "overlaySwitch" else { return }
+        UserDefaults.standard.set(WindowHideMode.moveOffscreen.rawValue, forKey: hideModeKey)
     }
 
     static var detachOnDragEnabled: Bool {
@@ -343,6 +376,30 @@ enum AppSettings {
         }
         set {
             UserDefaults.standard.set(newValue, forKey: allowCrossAppGroupingKey)
+        }
+    }
+
+    static var tabSwitchShortcut: TabSwitchShortcut {
+        get {
+            let keyCode: UInt16
+            if UserDefaults.standard.object(forKey: tabSwitchShortcutKeyCodeKey) != nil {
+                keyCode = UInt16(clamping: UserDefaults.standard.integer(forKey: tabSwitchShortcutKeyCodeKey))
+            } else {
+                keyCode = TabSwitchShortcut.default.keyCode
+            }
+
+            let modifiers: UInt
+            if UserDefaults.standard.object(forKey: tabSwitchShortcutModifiersKey) != nil {
+                modifiers = UInt(UserDefaults.standard.integer(forKey: tabSwitchShortcutModifiersKey))
+            } else {
+                modifiers = TabSwitchShortcut.default.modifiers
+            }
+
+            return TabSwitchShortcut(keyCode: keyCode, modifiers: modifiers)
+        }
+        set {
+            UserDefaults.standard.set(Int(newValue.keyCode), forKey: tabSwitchShortcutKeyCodeKey)
+            UserDefaults.standard.set(Int(newValue.modifiers), forKey: tabSwitchShortcutModifiersKey)
         }
     }
 

@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Self.shared = self
+        AppSettings.migrateLegacySettingsIfNeeded()
         NSApp.setActivationPolicy(.accessory)
         setupWindow()
         setupStatusItem()

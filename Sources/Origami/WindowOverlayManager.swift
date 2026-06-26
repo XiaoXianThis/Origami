@@ -428,12 +428,8 @@ final class WindowOverlayManager {
     private var timer: DispatchSourceTimer?
     private var shortcutEventTap: CFMachPort?
     private var shortcutEventSource: CFRunLoopSource?
-    private static let controlTabKeyCode: CGKeyCode = 48
-
     // groupID → overlay panel
     private var overlays: [UUID: NSPanel] = [:]
-    // groupID → 切换时用于遮住真实窗口迁移过程的快照窗口
-    private var transitionOverlays: [UUID: NSPanel] = [:]
     private var dropHighlightPanel: NSPanel?
     private var highlightedDropWindowID: CGWindowID?
     private var lastDropHighlightFrame: NSRect?
@@ -471,6 +467,12 @@ final class WindowOverlayManager {
     private var lastResolvedIsDark = AppSettings.isDarkMode()
     /// 组内切换进行中时跳过外部焦点同步，避免与标签栏切换互相抢焦点
     private var isGroupSwitchInProgress = false
+    /// 快速连切时只保留最后一次目标，避免并发 hide/restore 互相覆盖
+    private var pendingGroupSwitch: (wid: CGWindowID, gid: UUID)?
+    /// 取消过期的屏外移动补刀回调，防止已恢复窗口被再次移出屏幕
+    private var offscreenMoveGeneration: [CGWindowID: UInt64] = [:]
+    /// 取消过期的组内切换收尾回调
+    private var groupSwitchGeneration: [UUID: UInt64] = [:]
     private var lastObservedFocusedWindowID: CGWindowID?
     private var workspaceActivationObserver: NSObjectProtocol?
     private let ownProcessID = getpid()
@@ -516,15 +518,14 @@ final class WindowOverlayManager {
         timer?.cancel()
         timer = nil
         isGroupSwitchInProgress = false
+        pendingGroupSwitch = nil
         lastObservedFocusedWindowID = nil
         clearDragState()
         if AppSettings.restoreOnExit {
             restoreAllWindowsOnScreen()
         }
         overlays.values.forEach { $0.orderOut(nil) }
-        transitionOverlays.values.forEach { $0.orderOut(nil) }
         overlays.removeAll()
-        transitionOverlays.removeAll()
         lastFrames.removeAll()
         lastWindowFrames.removeAll()
         hostingViews.removeAll()
@@ -600,6 +601,9 @@ final class WindowOverlayManager {
         hiddenOriginalAXFrames.removeAll()
         hiddenWindowIDs.removeAll()
         isGroupSwitchInProgress = false
+        pendingGroupSwitch = nil
+        offscreenMoveGeneration.removeAll()
+        groupSwitchGeneration.removeAll()
         tick()
     }
 
@@ -795,13 +799,17 @@ final class WindowOverlayManager {
         }
 
         // 1. 注册新出现的可见窗口
+        var newlyRegisteredWindowIDs = Set<CGWindowID>()
         for wid in visibleWindowIDs where hiddenWindowIDs.contains(wid) == false {
+            if GroupStore.shared.groupID(for: wid) == nil {
+                newlyRegisteredWindowIDs.insert(wid)
+            }
             GroupStore.shared.registerIfNeeded(wid)
         }
 
-        // 1b. 同应用窗口自动归组
+        // 1b. 同应用新窗口自动并入已有分组，并切换到新窗口
         if AppSettings.autoGroupSameAppWindows {
-            for wid in visibleWindowIDs where hiddenWindowIDs.contains(wid) == false {
+            for wid in newlyRegisteredWindowIDs {
                 autoGroupSameAppWindowIfNeeded(wid)
             }
         }
@@ -1011,6 +1019,7 @@ final class WindowOverlayManager {
             stackedBehindTargetFrames.removeValue(forKey: wid)
             stackedBehindWindowAnchors = stackedBehindWindowAnchors.filter { $0.value != wid }
             hiddenWindowIDs.remove(wid)
+            offscreenMoveGeneration.removeValue(forKey: wid)
             titleCache.removeValue(forKey: wid)
             if pendingDetachWindowID == wid {
                 cancelPendingDetach()
@@ -1079,19 +1088,19 @@ final class WindowOverlayManager {
     private func restoreReplacementWindow(group: WindowGroup, groupID: UUID, targetAXFrame: NSRect?) {
         let replacementWID = group.activeWindowID
         let resolvedAXFrame = targetAXFrame.map { switchTargetFrame(slotFrame: $0, for: replacementWID) }
-        restoreWindow(replacementWID)
+
         if let resolvedAXFrame {
-            setWindowFrame(wid: replacementWID, frame: resolvedAXFrame)
+            revealIncomingWindowForSwitch(wid: replacementWID, slotFrame: resolvedAXFrame)
             lastKnownAXWindowFrames[replacementWID] = resolvedAXFrame
             let targetCGFrame = cgStyleFrame(fromAXFrame: resolvedAXFrame)
             lastKnownWindowFrames[replacementWID] = targetCGFrame
             lastWindowFrames[groupID] = targetCGFrame
+        } else {
+            restoreWindow(replacementWID)
         }
-        activateFrontmostWindow(replacementWID)
 
-        for wid in group.windowIDs where wid != replacementWID {
-            minimizeWindow(wid)
-        }
+        activateFrontmostWindow(replacementWID)
+        hideWindowsForSwitch(group.windowIDs.filter { $0 != replacementWID })
 
         for delay in [0.04, 0.12, 0.24] {
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
@@ -1099,15 +1108,13 @@ final class WindowOverlayManager {
                       let currentGroup = GroupStore.shared.groups[groupID],
                       currentGroup.activeWindowID == replacementWID else { return }
 
-                self.restoreWindow(replacementWID)
                 if let resolvedAXFrame {
-                    self.setWindowFrame(wid: replacementWID, frame: resolvedAXFrame)
+                    self.revealIncomingWindowForSwitch(wid: replacementWID, slotFrame: resolvedAXFrame)
+                } else {
+                    self.restoreWindow(replacementWID)
                 }
                 self.activateFrontmostWindow(replacementWID)
-
-                for wid in currentGroup.windowIDs where wid != replacementWID {
-                    self.minimizeWindow(wid)
-                }
+                self.hideWindowsForSwitch(currentGroup.windowIDs.filter { $0 != replacementWID })
             }
         }
     }
@@ -1129,8 +1136,6 @@ final class WindowOverlayManager {
     private func removeOverlay(for gid: UUID) {
         overlays[gid]?.orderOut(nil)
         overlays.removeValue(forKey: gid)
-        transitionOverlays[gid]?.orderOut(nil)
-        transitionOverlays.removeValue(forKey: gid)
         lastFrames.removeValue(forKey: gid)
         lastWindowFrames.removeValue(forKey: gid)
         hostingViews.removeValue(forKey: gid)
@@ -1263,74 +1268,6 @@ final class WindowOverlayManager {
 
         placeOverlay(panel, above: activeWID)
         return panel
-    }
-
-    // MARK: - 切换遮罩
-
-    @discardableResult
-    private func showTransitionOverlay(gid: UUID, sourceWID: CGWindowID, frame: NSRect?) -> NSPanel? {
-        transitionOverlays.removeValue(forKey: gid)?.orderOut(nil)
-        guard let frame, frame.width > 8, frame.height > 8 else { return nil }
-
-        let panel = NSPanel(
-            contentRect: frame,
-            styleMask: [.borderless],
-            backing: .buffered,
-            defer: false
-        )
-        panel.level = .normal
-        panel.hidesOnDeactivate = false
-        panel.becomesKeyOnlyIfNeeded = true
-        panel.worksWhenModal = true
-        panel.backgroundColor = .clear
-        panel.isOpaque = false
-        panel.hasShadow = false
-        panel.ignoresMouseEvents = true
-        panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
-        panel.contentView = makeTransitionContentView(sourceWID: sourceWID, size: frame.size)
-
-        transitionOverlays[gid] = panel
-        placeOverlay(panel, above: sourceWID)
-        return panel
-    }
-
-    private func makeTransitionContentView(sourceWID: CGWindowID, size: NSSize) -> NSView {
-        let bounds = NSRect(origin: .zero, size: size)
-        if let image = snapshotImage(wid: sourceWID, size: size) {
-            let imageView = NSImageView(frame: bounds)
-            imageView.autoresizingMask = [.width, .height]
-            imageView.image = image
-            imageView.imageScaling = .scaleAxesIndependently
-            return imageView
-        }
-
-        let fallbackView = NSVisualEffectView(frame: bounds)
-        fallbackView.autoresizingMask = [.width, .height]
-        fallbackView.material = .hudWindow
-        fallbackView.state = .active
-        fallbackView.wantsLayer = true
-        fallbackView.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.10).cgColor
-        return fallbackView
-    }
-
-    private func snapshotImage(wid: CGWindowID, size: NSSize) -> NSImage? {
-        guard let cgImage = CGWindowListCreateImage(
-            CGRect.null,
-            .optionIncludingWindow,
-            wid,
-            [.boundsIgnoreFraming, .bestResolution]
-        ) else { return nil }
-        return NSImage(cgImage: cgImage, size: size)
-    }
-
-    private func dismissTransitionOverlay(gid: UUID, panel: NSPanel?, after delay: TimeInterval) {
-        guard let panel else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self, weak panel] in
-            guard let self, let panel else { return }
-            guard self.transitionOverlays[gid] === panel else { return }
-            panel.orderOut(nil)
-            self.transitionOverlays.removeValue(forKey: gid)
-        }
     }
 
     // MARK: - 拖拽目标高亮
@@ -1646,29 +1583,44 @@ final class WindowOverlayManager {
 
     /// 组内切换 active 窗口
     private func handleActivate(wid: CGWindowID, gid: UUID) {
+        if isGroupSwitchInProgress {
+            pendingGroupSwitch = (wid, gid)
+            return
+        }
+        performGroupSwitch(wid: wid, gid: gid)
+    }
+
+    private func completeGroupSwitch(for gid: UUID, generation: UInt64) {
+        guard groupSwitchGeneration[gid] == generation else { return }
+        isGroupSwitchInProgress = false
+        guard let pending = pendingGroupSwitch else { return }
+        pendingGroupSwitch = nil
+        guard GroupStore.shared.groups[pending.gid]?.windowIDs.contains(pending.wid) == true else { return }
+        performGroupSwitch(wid: pending.wid, gid: pending.gid)
+    }
+
+    private func performGroupSwitch(wid: CGWindowID, gid: UUID) {
         guard let currentGroup = GroupStore.shared.groups[gid] else { return }
         isGroupSwitchInProgress = true
+        let switchGeneration = groupSwitchGeneration[gid, default: 0] &+ 1
+        groupSwitchGeneration[gid] = switchGeneration
         let finishGroupSwitch = { [weak self] in
-            self?.isGroupSwitchInProgress = false
+            self?.completeGroupSwitch(for: gid, generation: switchGeneration)
         }
         let currentWID = currentGroup.activeWindowID
         let currentOverlayFrame = cgFrame(wid: currentWID) ?? lastWindowFrames[gid]
         let currentAXFrame = axFrame(wid: currentWID) ?? lastKnownAXWindowFrames[currentWID]
         let targetAXFrame = currentAXFrame.map { switchTargetFrame(slotFrame: $0, for: wid) }
-        let transitionPanel = AppSettings.hideMode == .overlaySwitch
-            ? showTransitionOverlay(gid: gid, sourceWID: currentWID, frame: currentOverlayFrame)
-            : nil
+        let hideMode = AppSettings.hideMode
 
         GroupStore.shared.activate(windowID: wid, in: gid)
 
         guard let group = GroupStore.shared.groups[gid] else {
-            dismissTransitionOverlay(gid: gid, panel: transitionPanel, after: 0.08)
             finishGroupSwitch()
             return
         }
         updateHostingView(gid: gid, group: group)
         let prevWIDs = group.windowIDs.filter { $0 != wid }
-        let hideMode = AppSettings.hideMode
         let slotBasedSwitch = hideMode != .stackBehind && hideMode != .transparent
 
         if hideMode == .transparent {
@@ -1682,36 +1634,30 @@ final class WindowOverlayManager {
             WindowAlphaController.shared.setAlpha(1, for: wid)
             WindowTransformController.shared.resetTransform(for: wid)
         } else if slotBasedSwitch {
-            // 先藏旧窗再恢复目标窗，避免两窗同屏；恢复时跳过缓存旧坐标
-            for other in prevWIDs {
-                minimizeWindow(other)
+            if let targetAXFrame {
+                revealIncomingWindowForSwitch(wid: wid, slotFrame: targetAXFrame)
+            } else {
+                restoreWindow(wid)
             }
-            restoreWindow(wid, toSlotFrame: targetAXFrame)
+            activateFrontmostWindow(wid)
+            hideWindowsForSwitch(prevWIDs)
         } else {
             restoreWindow(wid)
         }
         if let targetAXFrame {
-            setWindowFrame(wid: wid, frame: targetAXFrame)
             lastKnownAXWindowFrames[wid] = targetAXFrame
 
             let finishSwitch = { [weak self] in
                 guard let self else { return }
-                self.setWindowFrame(wid: wid, frame: targetAXFrame)
+                guard self.groupSwitchGeneration[gid] == switchGeneration else { return }
                 self.activateFrontmostWindow(wid)
                 if hideMode == .stackBehind {
-                    for other in prevWIDs {
-                        self.minimizeWindow(other)
-                    }
+                    self.hideWindowsForSwitch(prevWIDs)
                 }
-                self.dismissTransitionOverlay(
-                    gid: gid,
-                    panel: transitionPanel,
-                    after: hideMode == .overlaySwitch ? 0.04 : 0
-                )
                 finishGroupSwitch()
             }
 
-            if hideMode == .overlaySwitch || hideMode == .stackBehind {
+            if hideMode == .stackBehind {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.06, execute: finishSwitch)
             } else {
                 finishSwitch()
@@ -1719,15 +1665,10 @@ final class WindowOverlayManager {
         } else {
             activateFrontmostWindow(wid)
             if hideMode == .stackBehind {
-                for other in prevWIDs {
-                    minimizeWindow(other)
-                }
+                hideWindowsForSwitch(prevWIDs)
             } else if slotBasedSwitch == false {
-                for other in prevWIDs {
-                    minimizeWindow(other)
-                }
+                hideWindowsForSwitch(prevWIDs)
             }
-            dismissTransitionOverlay(gid: gid, panel: transitionPanel, after: 0.04)
             finishGroupSwitch()
         }
         let targetOverlayFrame = targetAXFrame.map(cgStyleFrame(fromAXFrame:)) ?? currentOverlayFrame
@@ -1811,27 +1752,36 @@ final class WindowOverlayManager {
         AppSettings.allowCrossAppGrouping || sameApp(source, target)
     }
 
-    /// 若该应用已有窗口在分组中，把新窗口自动并入该组。
+    /// 若该应用已有窗口在分组中，把新窗口自动并入该组并切换到新窗口。
     private func autoGroupSameAppWindowIfNeeded(_ wid: CGWindowID) {
         guard let pid = windowPID(wid),
-              let sourceGID = GroupStore.shared.groupID(for: wid),
-              let sourceGroup = GroupStore.shared.groups[sourceGID],
-              sourceGroup.windowIDs.count == 1 else { return }
+              let sourceGID = GroupStore.shared.groupID(for: wid) else { return }
+
+        var bestTarget: (windowID: CGWindowID, groupID: UUID, groupSize: Int)?
 
         for (existingWID, existingGID) in GroupStore.shared.windowToGroup where existingWID != wid {
             guard existingGID != sourceGID,
                   windowPID(existingWID) == pid,
                   let targetGroup = GroupStore.shared.groups[existingGID] else { continue }
 
-            let targetWID = targetGroup.activeWindowID
-            _ = performMerge(
-                sourceWID: wid,
-                targetGID: existingGID,
-                targetWID: targetWID,
-                activateSource: false
+            let candidate = (
+                windowID: targetGroup.activeWindowID,
+                groupID: existingGID,
+                groupSize: targetGroup.windowIDs.count
             )
-            return
+            if bestTarget == nil || candidate.groupSize > bestTarget!.groupSize {
+                bestTarget = candidate
+            }
         }
+
+        guard let bestTarget else { return }
+
+        _ = performMerge(
+            sourceWID: wid,
+            targetGID: bestTarget.groupID,
+            targetWID: bestTarget.windowID,
+            activateSource: true
+        )
     }
 
     @discardableResult
@@ -1844,25 +1794,31 @@ final class WindowOverlayManager {
         guard sourceWID != targetWID else { return false }
         guard canMergeWindows(source: sourceWID, target: targetWID) else { return false }
 
+        if activateSource {
+            isGroupSwitchInProgress = true
+        }
+        defer {
+            if activateSource {
+                isGroupSwitchInProgress = false
+            }
+        }
+
         let targetOverlayFrame = cgFrame(wid: targetWID) ?? lastWindowFrames[targetGID]
-        let targetAXFrame = axFrame(wid: targetWID) ?? lastKnownAXWindowFrames[targetWID]
-        if let targetAXFrame {
-            setWindowFrame(wid: sourceWID, frame: targetAXFrame)
+        let targetSlotAXFrame = (axFrame(wid: targetWID) ?? lastKnownAXWindowFrames[targetWID])
+            .map { switchTargetFrame(slotFrame: $0, for: sourceWID) }
+        if let targetSlotAXFrame {
+            setWindowFrame(wid: sourceWID, frame: targetSlotAXFrame)
         }
 
         guard let mergedGID = GroupStore.shared.merge(sourceWindowID: sourceWID, intoGroupOf: targetWID),
               let mergedGroup = GroupStore.shared.groups[mergedGID] else { return false }
 
-        if activateSource == false {
-            GroupStore.shared.activate(windowID: targetWID, in: mergedGID)
-        }
-
         if let targetOverlayFrame {
             lastWindowFrames[mergedGID] = targetOverlayFrame
             lastKnownWindowFrames[sourceWID] = targetOverlayFrame
         }
-        if let targetAXFrame {
-            lastKnownAXWindowFrames[sourceWID] = targetAXFrame
+        if let targetSlotAXFrame {
+            lastKnownAXWindowFrames[sourceWID] = targetSlotAXFrame
         }
 
         if AppSettings.hideMode == .transparent {
@@ -1876,22 +1832,13 @@ final class WindowOverlayManager {
             WindowAlphaController.shared.setAlpha(1, for: sourceWID)
             WindowTransformController.shared.resetTransform(for: sourceWID)
         } else {
-            for wid in mergedGroup.windowIDs where wid != sourceWID {
-                minimizeWindow(wid)
+            if let targetSlotAXFrame {
+                revealIncomingWindowForSwitch(wid: sourceWID, slotFrame: targetSlotAXFrame)
+            } else {
+                restoreWindow(sourceWID)
             }
-            restoreWindow(sourceWID, toSlotFrame: targetAXFrame)
-        }
-        if let targetAXFrame {
-            setWindowFrame(wid: sourceWID, frame: targetAXFrame)
-        }
-
-        if activateSource {
             activateFrontmostWindow(sourceWID)
-        } else {
-            activateFrontmostWindow(targetWID)
-            for wid in mergedGroup.windowIDs where wid != targetWID {
-                minimizeWindow(wid)
-            }
+            hideWindowsForSwitch(mergedGroup.windowIDs.filter { $0 != sourceWID })
         }
 
         if AppSettings.hideMode == .stackBehind {
@@ -1965,20 +1912,11 @@ final class WindowOverlayManager {
             return Unmanaged.passUnretained(event)
         }
 
-        guard isControlTabEvent(event) else {
+        guard AppSettings.tabSwitchShortcut.matches(event) else {
             return Unmanaged.passUnretained(event)
         }
 
         return activateNextTabFromFocusedWindow() ? nil : Unmanaged.passUnretained(event)
-    }
-
-    private func isControlTabEvent(_ event: CGEvent) -> Bool {
-        let keyCode = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
-        guard keyCode == Self.controlTabKeyCode else { return false }
-
-        let flags = event.flags
-        let forbiddenFlags: CGEventFlags = [.maskCommand, .maskAlternate, .maskShift]
-        return flags.contains(.maskControl) && flags.intersection(forbiddenFlags).isEmpty
     }
 
     private func focusedWindowID() -> CGWindowID? {
@@ -2046,6 +1984,37 @@ final class WindowOverlayManager {
         guard let frame = axFrame(wid: wid) ?? lastKnownAXWindowFrames[wid] else { return nil }
         hiddenOriginalAXFrames[wid] = frame
         return frame
+    }
+
+    private func beginOffscreenMove(for wid: CGWindowID) -> UInt64 {
+        let generation = offscreenMoveGeneration[wid, default: 0] &+ 1
+        offscreenMoveGeneration[wid] = generation
+        return generation
+    }
+
+    private func invalidateOffscreenMove(for wid: CGWindowID) {
+        offscreenMoveGeneration[wid, default: 0] &+= 1
+    }
+
+    /// 从屏外恢复到槽位时，先落位再显示，避免窗口穿越屏幕
+    private func shouldDeferAlphaOnSlotRestore(for wid: CGWindowID, slotFrame: NSRect?) -> Bool {
+        guard slotFrame != nil, hiddenWindowIDs.contains(wid) else { return false }
+        switch AppSettings.hideMode {
+        case .moveOffscreen, .moveToSpace:
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// 窗口仍应处于隐藏态时才继续屏外补刀，避免快速切换后误伤已恢复的前台窗口
+    private func shouldKeepWindowOffscreen(_ wid: CGWindowID) -> Bool {
+        guard hiddenWindowIDs.contains(wid) else { return false }
+        if let groupInfo = GroupStore.shared.group(for: wid),
+           groupInfo.group.activeWindowID == wid {
+            return false
+        }
+        return true
     }
 
     private func offscreenFrame(from frame: NSRect) -> NSRect {
@@ -2135,17 +2104,68 @@ final class WindowOverlayManager {
     }
 
     private func setWindowFrame(wid: CGWindowID, frame: NSRect) {
+        setWindowSize(wid: wid, size: frame.size)
+        setWindowPosition(wid: wid, origin: frame.origin)
+        lastKnownAXWindowFrames[wid] = frame
+    }
+
+    private func setWindowSize(wid: CGWindowID, size: NSSize) {
         guard let pid = windowPID(wid),
               let win = axWindow(pid: pid, wid: wid) else { return }
-        var origin = frame.origin
-        var size = frame.size
-        if let sz = AXValueCreate(.cgSize, &size) {
-            AXUIElementSetAttributeValue(win, kAXSizeAttribute as CFString, sz)
+        var mutableSize = size
+        if let value = AXValueCreate(.cgSize, &mutableSize) {
+            AXUIElementSetAttributeValue(win, kAXSizeAttribute as CFString, value)
         }
-        if let pos = AXValueCreate(.cgPoint, &origin) {
-            AXUIElementSetAttributeValue(win, kAXPositionAttribute as CFString, pos)
+    }
+
+    private func setWindowPosition(wid: CGWindowID, origin: NSPoint) {
+        guard let pid = windowPID(wid),
+              let win = axWindow(pid: pid, wid: wid) else { return }
+        var mutableOrigin = origin
+        if let value = AXValueCreate(.cgPoint, &mutableOrigin) {
+            AXUIElementSetAttributeValue(win, kAXPositionAttribute as CFString, value)
         }
+    }
+
+    /// 组内切换：不可见状态下先缩放到槽位大小并贴位，再显示；避免用户看到窗口缩放或穿越屏幕
+    private func applyWindowFrameWhileHidden(wid: CGWindowID, frame: NSRect) {
+        setWindowSize(wid: wid, size: frame.size)
+        setWindowPosition(wid: wid, origin: frame.origin)
+        setWindowSize(wid: wid, size: frame.size)
         lastKnownAXWindowFrames[wid] = frame
+    }
+
+    @discardableResult
+    private func revealIncomingWindowForSwitch(wid: CGWindowID, slotFrame: NSRect) -> Bool {
+        invalidateOffscreenMove(for: wid)
+        stackedBehindWindowAnchors.removeValue(forKey: wid)
+        stackedBehindTargetFrames.removeValue(forKey: wid)
+
+        let needsSpaceRestore = hiddenOriginalSpaceIDs[wid] != nil
+        let spaceRestored = restoreWindowToCurrentSpaceIfNeeded(wid)
+        guard needsSpaceRestore == false || spaceRestored else { return false }
+
+        WindowAlphaController.shared.setAlpha(0, for: wid)
+        WindowTransformController.shared.resetTransform(for: wid)
+        _ = hiddenOriginalAXFrames.removeValue(forKey: wid)
+
+        applyWindowFrameWhileHidden(wid: wid, frame: slotFrame)
+
+        var unminimized = false
+        if let pid = windowPID(wid),
+           let win = axWindow(pid: pid, wid: wid) {
+            unminimized = AXUIElementSetAttributeValue(win, kAXMinimizedAttribute as CFString, false as CFTypeRef) == .success
+        }
+
+        let revealed = WindowAlphaController.shared.setAlpha(1, for: wid)
+        hiddenWindowIDs.remove(wid)
+        return revealed || unminimized
+    }
+
+    private func hideWindowsForSwitch(_ windowIDs: [CGWindowID]) {
+        for wid in windowIDs {
+            minimizeWindow(wid)
+        }
     }
 
     private func axWindow(pid: pid_t, wid: CGWindowID) -> AXUIElement? {
@@ -2190,21 +2210,40 @@ final class WindowOverlayManager {
     }
 
     private func moveWindowFullyOffscreen(_ wid: CGWindowID, from frame: NSRect) {
+        let generation = beginOffscreenMove(for: wid)
         let targetFrame = offscreenFrame(from: frame)
         setWindowFrame(wid: wid, frame: targetFrame)
         let targetCGFrame = offscreenCGFrame(fromAXFrame: targetFrame)
         lastKnownWindowFrames[wid] = targetCGFrame
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
-            self?.ensureWindowFullyOffscreen(wid, targetAXFrame: targetFrame, targetCGFrame: targetCGFrame)
+            self?.ensureWindowFullyOffscreen(
+                wid,
+                targetAXFrame: targetFrame,
+                targetCGFrame: targetCGFrame,
+                generation: generation
+            )
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) { [weak self] in
-            self?.ensureWindowFullyOffscreen(wid, targetAXFrame: targetFrame, targetCGFrame: targetCGFrame)
+            self?.ensureWindowFullyOffscreen(
+                wid,
+                targetAXFrame: targetFrame,
+                targetCGFrame: targetCGFrame,
+                generation: generation
+            )
         }
     }
 
-    private func ensureWindowFullyOffscreen(_ wid: CGWindowID, targetAXFrame: NSRect, targetCGFrame: NSRect) {
+    private func ensureWindowFullyOffscreen(
+        _ wid: CGWindowID,
+        targetAXFrame: NSRect,
+        targetCGFrame: NSRect,
+        generation: UInt64
+    ) {
+        guard offscreenMoveGeneration[wid] == generation else { return }
+        guard shouldKeepWindowOffscreen(wid) else { return }
+
         let currentFrame = cgFrame(wid: wid) ?? targetCGFrame
         guard intersectsAnyScreen(currentFrame) else { return }
 
@@ -2212,7 +2251,7 @@ final class WindowOverlayManager {
         lastKnownWindowFrames[wid] = targetCGFrame
 
         let verifiedFrame = cgFrame(wid: wid) ?? targetCGFrame
-        if intersectsAnyScreen(verifiedFrame) {
+        if intersectsAnyScreen(verifiedFrame), shouldKeepWindowOffscreen(wid) {
             WindowAlphaController.shared.setAlpha(0, for: wid)
         }
     }
@@ -2252,7 +2291,8 @@ final class WindowOverlayManager {
             guard WindowAlphaController.shared.setAlpha(0, for: wid) else { return false }
             hiddenWindowIDs.insert(wid)
             return true
-        case .overlaySwitch:
+        case .moveOffscreen:
+            WindowAlphaController.shared.setAlpha(0, for: wid)
             guard let frame = rememberOriginalFrameIfNeeded(for: wid, preferCurrent: true) else { return false }
             moveWindowFullyOffscreen(wid, from: frame)
             hiddenWindowIDs.insert(wid)
@@ -2275,11 +2315,6 @@ final class WindowOverlayManager {
             _ = rememberOriginalFrameIfNeeded(for: wid)
             hiddenWindowIDs.insert(wid)
             return true
-        case .moveOffscreen:
-            guard let frame = rememberOriginalFrameIfNeeded(for: wid, preferCurrent: true) else { return false }
-            moveWindowFullyOffscreen(wid, from: frame)
-            hiddenWindowIDs.insert(wid)
-            return true
         case .moveToSpace:
             _ = rememberOriginalFrameIfNeeded(for: wid)
             if moveWindowToHidingSpace(wid) {
@@ -2300,11 +2335,18 @@ final class WindowOverlayManager {
 
     @discardableResult
     private func restoreWindow(_ wid: CGWindowID, toSlotFrame slotFrame: NSRect? = nil) -> Bool {
+        invalidateOffscreenMove(for: wid)
         let needsSpaceRestore = hiddenOriginalSpaceIDs[wid] != nil
         let wasStackedBehind = stackedBehindWindowAnchors.removeValue(forKey: wid) != nil
         stackedBehindTargetFrames.removeValue(forKey: wid)
+        let deferAlphaRestore = shouldDeferAlphaOnSlotRestore(for: wid, slotFrame: slotFrame)
+        if deferAlphaRestore {
+            WindowAlphaController.shared.setAlpha(0, for: wid)
+        }
         let transformRestored = WindowTransformController.shared.resetTransform(for: wid)
-        let alphaRestored = WindowAlphaController.shared.setAlpha(1, for: wid)
+        let alphaRestored = deferAlphaRestore
+            ? false
+            : WindowAlphaController.shared.setAlpha(1, for: wid)
         let spaceRestored = restoreWindowToCurrentSpaceIfNeeded(wid)
         guard needsSpaceRestore == false || spaceRestored else { return false }
 
@@ -2326,7 +2368,8 @@ final class WindowOverlayManager {
             minimizedRestored = AXUIElementSetAttributeValue(win, kAXMinimizedAttribute as CFString, false as CFTypeRef) == .success
         }
 
-        guard alphaRestored || transformRestored || spaceRestored || minimizedRestored || frameRestored || wasStackedBehind else { return false }
+        let deferredAlphaRestored = deferAlphaRestore && WindowAlphaController.shared.setAlpha(1, for: wid)
+        guard alphaRestored || deferredAlphaRestored || transformRestored || spaceRestored || minimizedRestored || frameRestored || wasStackedBehind else { return false }
         hiddenWindowIDs.remove(wid)
         return true
     }

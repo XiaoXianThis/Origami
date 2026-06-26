@@ -21,7 +21,6 @@ Origami (/ˌɔːrɪˈɡɑːmi/) is a macOS menu bar app that groups multiple app
 | --- | --- |
 | Minimize | Best compatibility; switching leaves minimize / restore traces |
 | Transparent hide | More seamless; does not enter the Dock minimize area |
-| Overlay switch | Uses window snapshots to mask the switch — feels nearly instant |
 | Stack behind | Non-active windows shrink and stack behind the current one |
 | Move off-screen **[default]** | Temporarily moves non-active windows off-screen |
 | Move to another Space | Temporarily moves to another Space (requires at least two regular desktops) |

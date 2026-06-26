@@ -20,6 +20,8 @@ struct MainView: View {
     @AppStorage(AppSettings.restoreOnExitKey) private var restoreOnExit = AppSettings.defaultRestoreOnExit
     @AppStorage(AppSettings.autoGroupSameAppWindowsKey) private var autoGroupSameAppWindows = AppSettings.defaultAutoGroupSameAppWindows
     @AppStorage(AppSettings.allowCrossAppGroupingKey) private var allowCrossAppGrouping = AppSettings.defaultAllowCrossAppGrouping
+    @AppStorage(AppSettings.tabSwitchShortcutKeyCodeKey) private var tabSwitchShortcutKeyCode = Int(TabSwitchShortcut.default.keyCode)
+    @AppStorage(AppSettings.tabSwitchShortcutModifiersKey) private var tabSwitchShortcutModifiers = Int(bitPattern: TabSwitchShortcut.default.modifiers)
 
     @State private var detectedOffscreenWindows: [OffscreenWindowInfo] = []
 
@@ -169,6 +171,8 @@ struct MainView: View {
                     Label("官方网站", systemImage: "link")
                         .labelStyle(.titleAndIcon)
                 }
+                footerSeparator
+                Text(AppInfo.versionLabel)
             }
             .font(.footnote)
             .foregroundStyle(.secondary)
@@ -233,6 +237,16 @@ struct MainView: View {
 
     private var windowSwitchSection: some View {
         settingsSection(title: "窗口切换") {
+            ShortcutRecorderView(
+                keyCode: $tabSwitchShortcutKeyCode,
+                modifiers: $tabSwitchShortcutModifiers
+            )
+
+            Text("在已分组窗口获得焦点时按下快捷键，可切换到组内下一个标签。需至少包含 ⌘ / ⌃ / ⌥ / ⇧ 之一，并在系统设置中授予输入监控权限。")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
             Picker("切换大小", selection: windowSwitchSizeMode) {
                 ForEach(WindowSwitchSizeMode.allCases) { mode in
                     Text(mode.title).tag(mode)
@@ -249,8 +263,7 @@ struct MainView: View {
 
     private var groupingSection: some View {
         settingsSection(title: "窗口分组") {
-            Toggle("同应用窗口自动归组", isOn: $autoGroupSameAppWindows)
-            Toggle("允许不同应用窗口合并成组", isOn: $allowCrossAppGrouping)
+            Toggle("同应用窗口自动归组（实验性）", isOn: $autoGroupSameAppWindows)
 
             Text(autoGroupSameAppWindows
                 ? "同一应用的新窗口会自动加入该应用已有窗口所在的分组。"
@@ -258,6 +271,15 @@ struct MainView: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+
+            if autoGroupSameAppWindows {
+                Text("部分窗口是子窗口或应用内部弹窗（如系统设置中的对话框），可能与主窗口自动归为一组；主窗口被隐藏时会连带隐藏子窗口。")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Toggle("允许不同应用窗口合并成组", isOn: $allowCrossAppGrouping)
 
             Text(allowCrossAppGrouping
                 ? "可以将不同应用的窗口拖拽合并到同一分组。"

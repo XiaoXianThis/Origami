@@ -70,6 +70,7 @@ struct TabBarLayout {
     static let tabHorizontalPadding: CGFloat = 20
     static let tabHeight: CGFloat = 22
     static let barHeight: CGFloat = 26
+    static let tabFont = NSFont.systemFont(ofSize: 12, weight: .medium)
 
     static func tabMinWidth() -> CGFloat {
         CGFloat(AppSettings.defaultTabMinWidth)
@@ -80,7 +81,7 @@ struct TabBarLayout {
     }
 
     static func tabWidth(for title: String, maxWidth: CGFloat = labelMaxWidth()) -> CGFloat {
-        let font = NSFont.systemFont(ofSize: 12, weight: .medium)
+        let font = tabFont
         let textWidth = (title as NSString).size(withAttributes: [.font: font]).width
         let contentWidth = textWidth + tabHorizontalPadding
         return max(tabMinWidth(), min(contentWidth, maxWidth))
@@ -170,7 +171,7 @@ final class TabBarNSView: NSView {
             para.alignment = .center
             para.lineBreakMode = .byTruncatingTail
             let attr: [NSAttributedString.Key: Any] = [
-                .font: NSFont.systemFont(ofSize: 12, weight: isActive ? .semibold : .regular),
+                .font: TabBarLayout.tabFont,
                 .foregroundColor: isActive ? colors.activeText : colors.inactiveText,
                 .paragraphStyle: para
             ]
