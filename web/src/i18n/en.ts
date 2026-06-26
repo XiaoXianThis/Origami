@@ -1,0 +1,175 @@
+import type { Translations } from './types';
+
+export const en: Translations = {
+  locale: 'en',
+  langLabel: 'English',
+  meta: {
+    title: 'Origami — macOS Window Grouping & Seamless Switching',
+    description:
+      'Origami groups multiple macOS windows like browser tabs with an overlay tab bar for fast, seamless window switching.',
+    themeColor: '#E0F2F7',
+  },
+  header: {
+    nav: [
+      { href: '#features', label: 'Features' },
+      { href: '#demo', label: 'Demo' },
+      { href: '#download', label: 'Download' },
+    ],
+    download: 'Download',
+    githubAria: 'GitHub repository',
+  },
+  hero: {
+    badge: 'macOS 13+ · Menu Bar App · Open Source',
+    titlePrefix: 'Like origami, ',
+    titleHighlight: 'fold windows into one group',
+    description:
+      'Origami is a macOS menu bar app that merges multiple app windows into groups with an overlay tab bar — switch between windows as quickly and seamlessly as browser tabs.',
+    download: 'Download Origami',
+    demo: 'Try the Demo',
+    source: 'View Source',
+  },
+  demo: {
+    titlePrefix: 'Try it yourself — ',
+    titleHighlight: 'Origami',
+    lead: 'Merge multiple macOS windows into a group with an overlay tab bar — switch fast and seamlessly, just like browser tabs.',
+    steps: [
+      {
+        num: '01',
+        title: 'Drag a tab',
+        desc: 'Hold a tab outside a window and drag it toward another window',
+        icon: 'M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z M6 6h.008v.008H6V6z',
+      },
+      {
+        num: '02',
+        title: 'Drop to merge',
+        desc: 'Release on the target window to merge into one group',
+        icon: 'M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z',
+      },
+      {
+        num: '03',
+        title: 'Click to switch',
+        desc: 'Click a tab in the bar to instantly switch windows in the group',
+        icon: 'M15.042 21.672L13.684 16.6m0 0l-2.51 2.225.569-9.47 5.227 7.917-3.286-.672z',
+      },
+    ],
+    tagline: 'Simple · Efficient · Seamless',
+    stepsAria: 'Demo guide steps',
+  },
+  showcase: {
+    pillPrimary: 'Origami · macOS 13+',
+    pillGhost: 'Open Source · Menu Bar App',
+    titleLine1: 'Built for macOS',
+    titleLine2: 'multi-window workflows',
+    leadPrefix: 'Not just a window manager — bring ',
+    leadEmphasis: 'tab thinking',
+    leadSuffix: ' to native app windows. Group, switch, and hide — all in one flow.',
+    features: [
+      {
+        title: 'Window grouping & tab bar',
+        description:
+          'Merge multiple windows into one group with a clickable tab bar on top — switching feels as natural as browser tabs.',
+        decor: 'TAB',
+        visual: 'tabs',
+        accent: '#00b7eb',
+      },
+      {
+        title: 'Seamless switching',
+        description: 'Seven hide strategies to switch between grouped windows with minimal minimize traces.',
+        decor: 'HIDE',
+        visual: 'spark',
+        accent: '#6366f1',
+      },
+      {
+        title: 'Drag to group',
+        description: 'Drag tabs to merge window groups; drag out to automatically leave the current group.',
+        decor: 'DRAG',
+        visual: 'drag',
+        accent: '#0ea5e9',
+      },
+      {
+        title: 'Custom tab placement',
+        description: 'Adjust horizontal / vertical anchor, inside/outside position, offset, and max width.',
+        decor: 'ADJ',
+        visual: 'sliders',
+        accent: '#0284c7',
+      },
+      {
+        title: 'Off-screen recovery',
+        description: 'Detect windows fully off-screen by their real position and move them back with one click.',
+        decor: 'FIND',
+        visual: 'window',
+        accent: '#0891b2',
+      },
+      {
+        title: 'Theme sync',
+        description: 'Light, dark, or follow system — tab bar and settings window stay in sync.',
+        decor: 'THEME',
+        visual: 'theme',
+        accent: '#7c3aed',
+      },
+    ],
+    modesTitle: 'Choose from flexible options',
+    modesLead:
+      'Different apps and macOS versions vary in window control compatibility. Switch anytime in settings to find the best seamless strategy for you.',
+    modes: [
+      { name: 'Minimize', description: 'Best compatibility; switching leaves minimize / restore traces.', tag: 'Stable', decor: '01' },
+      { name: 'Transparent hide', description: 'More seamless; does not enter the Dock minimize area.', tag: 'Recommended', decor: '02' },
+      { name: 'Overlay switch', description: 'Uses window snapshots to mask the switch — feels nearly instant.', tag: 'Smooth', decor: '03' },
+      { name: 'Stack behind', description: 'Non-active windows shrink and stack behind the current one.', tag: 'Visual', decor: '04' },
+      { name: 'Move off-screen', description: 'Temporarily moves non-active windows off-screen.', tag: 'Classic', decor: '05' },
+      { name: 'Move to another Space', description: 'Temporarily moves to another Space; requires at least two regular desktops.', tag: 'Space', decor: '06' },
+      { name: 'Shrink tiny', description: 'Non-active windows shrink to a tiny size and restore on switch.', tag: 'Light', decor: '07' },
+    ],
+    permission:
+      'On first launch, grant Origami Accessibility permission in System Settings → Privacy & Security → Accessibility to control window position and state.',
+    downloadTag: 'Download',
+    downloadTitle: 'Download & run',
+    downloadLead: 'Universal build for Apple Silicon and Intel. No developer account needed — just grant permissions after install.',
+    downloadDmg: 'Download DMG',
+    downloadZip: 'ZIP',
+    allReleases: 'All releases',
+    downloadReq: 'macOS 13 Ventura or later',
+    installSteps: [
+      { title: 'Download & install', detail: 'Open the DMG and drag Origami into Applications.' },
+      { title: 'First launch', detail: 'For unsigned apps: right-click → Open → Open again.' },
+      { title: 'Grant Accessibility', detail: 'System Settings → Privacy & Security → Accessibility → enable Origami.' },
+      { title: 'Grant Input Monitoring (optional)', detail: 'Required for global shortcuts — enable Origami under Input Monitoring.' },
+    ],
+    gettingStartedTag: 'Getting Started',
+    gettingStartedTitle: 'Up and running in minutes',
+    usageSteps: [
+      { text: 'Launch Origami — it lives in the menu bar' },
+      { text: 'Click the menu bar icon → Show Window to open settings' },
+      { text: 'Drag windows into a group or merge / switch via the tab bar' },
+      { text: 'Choose hide mode and tab placement in settings' },
+    ],
+    buildFromSource: 'Build from source',
+    buildBadge: 'bash',
+    ctaLabel: 'Ready?',
+    ctaTitlePrefix: 'Fold scattered windows ',
+    ctaTitleHighlight: 'into a neat group',
+    ctaLead: 'Built for power users — code, research, docs — switch tabs without breaking your flow.',
+    ctaDownload: 'Download Origami',
+    ctaGithub: 'Star on GitHub',
+  },
+  footer: {
+    developer: 'By 大不6仙',
+    gettingStarted: 'Getting Started',
+  },
+  author: {
+    label: 'Developer: 大不6仙',
+    aria: '大不6仙 on Bilibili',
+  },
+  pronunciation: {
+    aria: 'Play Origami pronunciation',
+  },
+  theme: {
+    light: 'Light mode',
+    dark: 'Dark mode',
+    toggle: 'Toggle theme',
+  },
+  localeToggle: {
+    label: 'Language',
+    switchTo: '中文',
+  },
+};

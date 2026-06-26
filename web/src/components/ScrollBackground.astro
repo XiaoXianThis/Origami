@@ -1,29 +1,29 @@
 ---
-/** 全页滚动视差背景：点阵、网格、粒子与纹理，随滚动产生层次感 */
+/** 全页固定背景：点阵、网格、粒子与纹理，不随滚动移动 */
 ---
 
 <div id="scroll-bg" class="scroll-bg" aria-hidden="true">
-  <div class="scroll-bg__layer scroll-bg__dots" data-parallax="0.06"></div>
-  <div class="scroll-bg__layer scroll-bg__grid" data-parallax="0.1"></div>
+  <div class="scroll-bg__layer scroll-bg__dots"></div>
+  <div class="scroll-bg__layer scroll-bg__grid"></div>
 
-  <div class="scroll-bg__layer scroll-bg__particles" data-parallax="0.14">
-    <span class="scroll-bg__particle scroll-bg__particle--1" data-parallax="0.22"></span>
-    <span class="scroll-bg__particle scroll-bg__particle--2" data-parallax="0.18"></span>
-    <span class="scroll-bg__particle scroll-bg__particle--3" data-parallax="0.28"></span>
-    <span class="scroll-bg__particle scroll-bg__particle--4" data-parallax="0.16"></span>
-    <span class="scroll-bg__particle scroll-bg__particle--5" data-parallax="0.24"></span>
-    <span class="scroll-bg__particle scroll-bg__particle--6" data-parallax="0.12"></span>
-    <span class="scroll-bg__particle scroll-bg__particle--7" data-parallax="0.2"></span>
-    <span class="scroll-bg__particle scroll-bg__particle--8" data-parallax="0.15"></span>
+  <div class="scroll-bg__layer scroll-bg__particles">
+    <span class="scroll-bg__particle scroll-bg__particle--1"></span>
+    <span class="scroll-bg__particle scroll-bg__particle--2"></span>
+    <span class="scroll-bg__particle scroll-bg__particle--3"></span>
+    <span class="scroll-bg__particle scroll-bg__particle--4"></span>
+    <span class="scroll-bg__particle scroll-bg__particle--5"></span>
+    <span class="scroll-bg__particle scroll-bg__particle--6"></span>
+    <span class="scroll-bg__particle scroll-bg__particle--7"></span>
+    <span class="scroll-bg__particle scroll-bg__particle--8"></span>
   </div>
 
-  <div class="scroll-bg__layer scroll-bg__rings" data-parallax="0.08">
-    <span class="scroll-bg__ring scroll-bg__ring--1" data-parallax="0.12"></span>
-    <span class="scroll-bg__ring scroll-bg__ring--2" data-parallax="0.18"></span>
+  <div class="scroll-bg__layer scroll-bg__rings">
+    <span class="scroll-bg__ring scroll-bg__ring--1"></span>
+    <span class="scroll-bg__ring scroll-bg__ring--2"></span>
   </div>
 
-  <div class="scroll-bg__layer scroll-bg__grain" data-parallax="0.04"></div>
-  <div class="scroll-bg__layer scroll-bg__cross" data-parallax="0.07"></div>
+  <div class="scroll-bg__layer scroll-bg__grain"></div>
+  <div class="scroll-bg__layer scroll-bg__cross"></div>
 </div>
 
 <style>
@@ -37,7 +37,6 @@
 
   .scroll-bg__layer {
     position: absolute;
-    will-change: transform;
   }
 
   /* 大范围点阵 */
@@ -68,7 +67,6 @@
     position: absolute;
     display: block;
     border-radius: 9999px;
-    will-change: transform;
   }
 
   .scroll-bg__particle--1 {
@@ -148,7 +146,6 @@
     display: block;
     border-radius: 9999px;
     border: 1px solid rgba(0, 153, 204, 0.12);
-    will-change: transform;
   }
 
   .scroll-bg__ring--1 {
@@ -193,7 +190,7 @@
     .scroll-bg__layer,
     .scroll-bg__particle,
     .scroll-bg__ring {
-      will-change: auto;
+      transform: none;
     }
   }
 
@@ -218,35 +215,3 @@
     }
   }
 </style>
-
-<script>
-  const root = document.getElementById('scroll-bg');
-  if (!root) {
-    /* 无背景容器时跳过 */
-  } else {
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const layers = root.querySelectorAll<HTMLElement>('[data-parallax]');
-
-    let ticking = false;
-
-    function applyParallax() {
-      const scrollY = window.scrollY;
-      for (const el of layers) {
-        const speed = Number(el.dataset.parallax ?? 0);
-        el.style.transform = `translate3d(0, ${scrollY * speed}px, 0)`;
-      }
-      ticking = false;
-    }
-
-    function onScroll() {
-      if (reducedMotion || ticking) return;
-      ticking = true;
-      requestAnimationFrame(applyParallax);
-    }
-
-    if (!reducedMotion) {
-      applyParallax();
-      window.addEventListener('scroll', onScroll, { passive: true });
-    }
-  }
-</script>

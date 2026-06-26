@@ -54,17 +54,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func setupStatusItem() {
         let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        statusItem.button?.image = NSImage(systemSymbolName: "rectangle.on.rectangle", accessibilityDescription: "Origami")
+        if let icon = Self.loadBundledIcon(pointSize: 18) {
+            statusItem.button?.image = icon
+        } else {
+            statusItem.button?.image = NSImage(systemSymbolName: "rectangle.on.rectangle", accessibilityDescription: "Origami")
+        }
 
         let menu = NSMenu()
         let showItem = NSMenuItem(title: "显示窗口", action: #selector(showWindow(_:)), keyEquivalent: "")
         showItem.target = self
         menu.addItem(showItem)
+        let restoreItem = NSMenuItem(title: "复原全部窗口", action: #selector(restoreAllWindows(_:)), keyEquivalent: "")
+        restoreItem.target = self
+        menu.addItem(restoreItem)
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "退出", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         statusItem.menu = menu
 
         self.statusItem = statusItem
+    }
+
+    private static func loadBundledIcon(pointSize: CGFloat) -> NSImage? {
+        guard let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+              let image = NSImage(contentsOf: url) else { return nil }
+        image.size = NSSize(width: pointSize, height: pointSize)
+        return image
     }
 
     @objc func showWindow(_ sender: Any?) {
@@ -73,5 +87,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         window?.makeKeyAndOrderFront(sender)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @objc func restoreAllWindows(_ sender: Any?) {
+        WindowOverlayManager.shared.restoreAllWindowsManually()
     }
 }

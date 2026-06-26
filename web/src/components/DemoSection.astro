@@ -1,26 +1,13 @@
 ---
 import MacOSDemo from './demo/MacOSDemo.astro';
+import type { Translations } from '../i18n';
 
-const steps = [
-  {
-    num: '01',
-    title: '拖动标签',
-    desc: '按住窗口外的标签，拖向另一个窗口',
-    icon: 'M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z M6 6h.008v.008H6V6z',
-  },
-  {
-    num: '02',
-    title: '拖入合并',
-    desc: '释放在目标窗口上，合并为同一组',
-    icon: 'M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z',
-  },
-  {
-    num: '03',
-    title: '点击切换',
-    desc: '在标签栏点击，即时切换组内窗口',
-    icon: 'M15.042 21.672L13.684 16.6m0 0l-2.51 2.225.569-9.47 5.227 7.917-3.286-.672z',
-  },
-];
+interface Props {
+  t: Translations;
+}
+
+const { t } = Astro.props;
+const steps = t.demo.steps;
 ---
 
 <section id="demo" class="demo-hide-narrow-portrait scroll-mt-16 overflow-x-clip px-2 py-16 sm:px-3 md:py-20 lg:px-4">
@@ -33,12 +20,12 @@ const steps = [
 
     <div class="demo-section-inner">
       <header class="demo-section-header">
-        <h2 class="demo-copy-title">
-          亲手试试
-          <span class="text-gradient-brand">Origami</span>
+        <h2 class="page-section-title demo-copy-title">
+          {t.demo.titlePrefix}
+          <span class="text-gradient-brand">{t.demo.titleHighlight}</span>
         </h2>
         <p class="demo-copy-lead">
-          把多个 macOS 窗口合并成组，在窗口外叠加标签栏——像切换浏览器标签一样，快速、无痕地切换。
+          {t.demo.lead}
         </p>
       </header>
 
@@ -47,7 +34,7 @@ const steps = [
           <MacOSDemo />
         </div>
 
-        <aside class="demo-section-copy" id="demo-section-copy" aria-label="演示引导步骤">
+        <aside class="demo-section-copy" id="demo-section-copy" aria-label={t.demo.stepsAria}>
           <div class="demo-guide-card">
             <ol class="demo-guide-steps" id="demo-guide-steps">
               {steps.map((step, index) => (
@@ -74,7 +61,7 @@ const steps = [
         </aside>
       </div>
 
-      <p class="demo-section-tagline">简洁 · 高效 · 无痕</p>
+      <p class="demo-section-tagline">{t.demo.tagline}</p>
     </div>
   </div>
 </section>
@@ -90,8 +77,9 @@ const steps = [
 
   .demo-section-bg {
     pointer-events: none;
-    position: absolute;
-    inset: -4rem -3rem;
+    position: fixed;
+    inset: 0;
+    z-index: 0;
     overflow: hidden;
   }
 
@@ -175,30 +163,28 @@ const steps = [
     pointer-events: auto;
   }
 
-  .demo-copy-title {
-    font-size: clamp(1.625rem, 2.6vw, 2.25rem);
-    font-weight: 700;
-    line-height: 1.2;
-    letter-spacing: -0.02em;
-    color: #0f172a;
-  }
-
   .demo-copy-lead {
     margin-top: 0.875rem;
     font-size: clamp(1rem, 1.25vw, 1.125rem);
     line-height: 1.65;
-    color: #64748b;
+    color: var(--site-muted);
   }
 
   .demo-guide-card {
     padding: clamp(1.125rem, 1.8vw, 1.5rem);
     border-radius: 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.85);
-    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid var(--site-card-border);
+    background: var(--site-card-bg);
     box-shadow:
       0 1px 2px rgba(15, 50, 90, 0.04),
       0 12px 32px rgba(15, 50, 90, 0.08);
     backdrop-filter: blur(12px);
+  }
+
+  :global(.dark) .demo-guide-card {
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.15),
+      0 12px 32px rgba(0, 0, 0, 0.25);
   }
 
   .demo-guide-steps {
@@ -295,7 +281,7 @@ const steps = [
   .demo-guide-title {
     font-size: 1.0625rem;
     font-weight: 600;
-    color: #0f172a;
+    color: var(--site-text-strong);
     transition: color 0.35s ease;
   }
 
@@ -307,7 +293,7 @@ const steps = [
     margin-top: 0.25rem;
     font-size: 0.9375rem;
     line-height: 1.6;
-    color: #64748b;
+    color: var(--site-muted);
   }
 
   .demo-section-tagline {
@@ -315,7 +301,7 @@ const steps = [
     text-align: center;
     font-size: 0.8125rem;
     letter-spacing: 0.28em;
-    color: #94a3b8;
+    color: var(--site-muted);
   }
 
   @media (max-width: 900px) {

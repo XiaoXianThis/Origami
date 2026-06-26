@@ -197,6 +197,9 @@ final class TabBarNSView: NSView {
         }
         guard !isDraggingTab,
               let wid = pendingDragWindowID else { return }
+        if let index = model.windowIDs.firstIndex(of: wid), index != model.activeIndex {
+            model.activeIndex = index
+        }
         onActivate?(wid)
     }
 

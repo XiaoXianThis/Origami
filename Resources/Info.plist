@@ -6,6 +6,8 @@
 	<string>zh-Hans</string>
 	<key>CFBundleExecutable</key>
 	<string>Origami</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.xiaoxianthis.origami</string>
 	<key>CFBundleInfoDictionaryVersion</key>

@@ -1,0 +1,1160 @@
+---
+import HugeIcon from './HugeIcon.astro';
+import DemoSection from './DemoSection.astro';
+import type { Translations } from '../i18n';
+import {
+  GroupLayersIcon,
+  SparklesIcon,
+  DragDropIcon,
+  SlidersHorizontalIcon,
+  AppWindowMacIcon,
+  Palette,
+  Minimize01Icon,
+  ViewOffIcon,
+  PictureInPictureOnIcon,
+  LayerSendToBackIcon,
+  MoveToIcon,
+  ComputerScreenShareIcon,
+  Resize01Icon,
+  Download01Icon,
+  ShieldKeyIcon,
+  Settings01Icon,
+  CursorMove01Icon,
+  CodeIcon,
+} from '@hugeicons/core-free-icons';
+
+interface Props {
+  t: Translations;
+}
+
+const { t } = Astro.props;
+const s = t.showcase;
+
+const featureIcons = [
+  GroupLayersIcon,
+  SparklesIcon,
+  DragDropIcon,
+  SlidersHorizontalIcon,
+  AppWindowMacIcon,
+  Palette,
+];
+
+const modeIcons = [
+  Minimize01Icon,
+  ViewOffIcon,
+  PictureInPictureOnIcon,
+  LayerSendToBackIcon,
+  MoveToIcon,
+  ComputerScreenShareIcon,
+  Resize01Icon,
+];
+
+const installStepIcons = [Download01Icon, AppWindowMacIcon, ShieldKeyIcon, CursorMove01Icon];
+const usageStepIcons = [Settings01Icon, AppWindowMacIcon, DragDropIcon, SlidersHorizontalIcon];
+
+const features = s.features.map((feature, index) => ({
+  ...feature,
+  icon: featureIcons[index],
+}));
+
+const modes = s.modes.map((mode, index) => ({
+  ...mode,
+  icon: modeIcons[index],
+}));
+
+const releaseVersion = '0.1.3';
+const dmgUrl = `https://github.com/XiaoXianThis/Origami/releases/download/v${releaseVersion}/Origami-v${releaseVersion}-macos-universal.dmg`;
+const zipUrl = `https://github.com/XiaoXianThis/Origami/releases/download/v${releaseVersion}/Origami-v${releaseVersion}-macos-universal.zip`;
+const releaseUrl = `https://github.com/XiaoXianThis/Origami/releases/tag/v${releaseVersion}`;
+
+const installSteps = s.installSteps.map((step, index) => ({
+  ...step,
+  icon: installStepIcons[index],
+}));
+
+const usageSteps = s.usageSteps.map((step, index) => ({
+  ...step,
+  icon: usageStepIcons[index],
+}));
+
+const marqueeFeatures = [...features, ...features];
+---
+
+<section id="features" class="showcase">
+  <div class="showcase-inner">
+    <!-- 主标题区 -->
+    <header class="showcase-hero">
+      <div class="showcase-hero-meta">
+        <span class="showcase-pill">{s.pillPrimary}</span>
+        <span class="showcase-pill showcase-pill--ghost">{s.pillGhost}</span>
+      </div>
+
+      <h2 class="page-section-title showcase-title">
+        {s.titleLine1}<br />
+        <span class="showcase-title-accent">{s.titleLine2}</span>
+      </h2>
+
+      <p class="showcase-lead">
+        {s.leadPrefix}<span class="showcase-lead-em">{s.leadEmphasis}</span>{s.leadSuffix}
+      </p>
+    </header>
+
+    <!-- 功能卡片 Marquee -->
+    <div class="showcase-marquee">
+      <div class="showcase-marquee-track">
+        {marqueeFeatures.map((feature, index) => (
+          <article
+            class="showcase-bento-card"
+            style={`--accent: ${feature.accent}`}
+            aria-hidden={index >= features.length ? 'true' : undefined}
+          >
+            <div class="showcase-card-deco" aria-hidden="true">
+              <div class="showcase-card-deco-icon">
+                <HugeIcon icon={feature.icon} size={128} />
+              </div>
+              <span class="showcase-card-deco-text">{feature.decor}</span>
+            </div>
+            <div class="showcase-bento-art">
+              <div class="showcase-bento-art-icon">
+                <HugeIcon icon={feature.icon} size={52} />
+              </div>
+              {feature.visual === 'tabs' && (
+                <div class="showcase-tab-bar showcase-bento-mini" aria-hidden="true">
+                  <span class="showcase-tab showcase-tab--active">Xcode</span>
+                  <span class="showcase-tab">Safari</span>
+                  <span class="showcase-tab">Terminal</span>
+                </div>
+              )}
+              {feature.visual === 'spark' && (
+                <div class="showcase-mini-graphic showcase-mini-graphic--spark" aria-hidden="true">
+                  <span class="showcase-mini-dot"></span>
+                  <span class="showcase-mini-dot"></span>
+                  <span class="showcase-mini-dot showcase-mini-dot--active"></span>
+                </div>
+              )}
+              {feature.visual === 'drag' && (
+                <div class="showcase-mini-graphic showcase-mini-graphic--drag" aria-hidden="true">
+                  <span class="showcase-mini-window"></span>
+                  <span class="showcase-mini-arrow">→</span>
+                  <span class="showcase-mini-window showcase-mini-window--target"></span>
+                </div>
+              )}
+              {feature.visual === 'sliders' && (
+                <div class="showcase-mini-graphic showcase-mini-graphic--sliders" aria-hidden="true">
+                  <span class="showcase-mini-track"><span class="showcase-mini-thumb" style="left: 20%"></span></span>
+                  <span class="showcase-mini-track"><span class="showcase-mini-thumb" style="left: 65%"></span></span>
+                  <span class="showcase-mini-track"><span class="showcase-mini-thumb" style="left: 40%"></span></span>
+                </div>
+              )}
+              {feature.visual === 'window' && (
+                <div class="showcase-mini-graphic showcase-mini-graphic--window" aria-hidden="true">
+                  <span class="showcase-mini-screen"></span>
+                  <span class="showcase-mini-screen showcase-mini-screen--off"></span>
+                </div>
+              )}
+              {feature.visual === 'theme' && (
+                <div class="showcase-mini-graphic showcase-mini-graphic--theme" aria-hidden="true">
+                  <span class="showcase-mini-swatch showcase-mini-swatch--light"></span>
+                  <span class="showcase-mini-swatch showcase-mini-swatch--dark"></span>
+                </div>
+              )}
+            </div>
+            <div class="showcase-bento-body">
+              {feature.title && <h3 class="showcase-bento-title">{feature.title}</h3>}
+              <p class="showcase-bento-desc">{feature.description}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+
+    <!-- 隐藏方式 -->
+    <div id="hide-modes" class="showcase-modes">
+      <h3 class="showcase-modes-title">{s.modesTitle}</h3>
+      <p class="showcase-modes-lead">
+        {s.modesLead}
+      </p>
+
+      <div class="showcase-modes-grid">
+        {modes.map((mode, index) => (
+          <div class="showcase-mode-card" style={`--i: ${index}; --accent: #0099cc`}>
+            <div class="showcase-card-deco showcase-card-deco--mode" aria-hidden="true">
+              <div class="showcase-card-deco-icon">
+                <HugeIcon icon={mode.icon} size={96} />
+              </div>
+              <span class="showcase-card-deco-text">{mode.decor}</span>
+            </div>
+            <div class="showcase-mode-icon" aria-hidden="true">
+              <HugeIcon icon={mode.icon} size={40} />
+            </div>
+            <div class="showcase-mode-content">
+              <div class="showcase-mode-top">
+                <span class="showcase-mode-index">{String(index + 1).padStart(2, '0')}</span>
+                <span class="showcase-mode-tag">{mode.tag}</span>
+              </div>
+              <h4 class="showcase-mode-name">{mode.name}</h4>
+              <p class="showcase-mode-desc">{mode.description}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <aside class="showcase-permission">
+        <HugeIcon icon={ShieldKeyIcon} size={28} class="showcase-permission-icon" />
+        <p>
+          {s.permission}
+        </p>
+      </aside>
+    </div>
+  </div>
+
+  <DemoSection t={t} />
+
+  <div class="showcase-inner">
+    <!-- 下载 + 上手 -->
+    <div class="showcase-action">
+      <div id="download" class="showcase-download" style="--accent: #00b7eb">
+        <div class="showcase-card-deco showcase-card-deco--panel" aria-hidden="true">
+          <div class="showcase-card-deco-icon">
+            <HugeIcon icon={Download01Icon} size={160} />
+          </div>
+          <span class="showcase-card-deco-text">DL</span>
+        </div>
+        <div class="showcase-panel-content">
+        <p class="showcase-section-tag">{s.downloadTag}</p>
+        <h3 class="showcase-section-title">{s.downloadTitle}</h3>
+        <p class="showcase-download-lead">
+          {s.downloadLead}
+        </p>
+
+        <div class="showcase-download-btns">
+          <a href={dmgUrl} class="btn-primary showcase-btn-lg">
+            {s.downloadDmg} v{releaseVersion}
+          </a>
+          <a href={zipUrl} class="btn-secondary">{s.downloadZip}</a>
+          <a href={releaseUrl} target="_blank" rel="noopener noreferrer" class="btn-secondary">
+            {s.allReleases}
+          </a>
+        </div>
+        <p class="showcase-download-req">{s.downloadReq}</p>
+
+        <ol class="showcase-install">
+          {installSteps.map((step, index) => (
+            <li class="showcase-install-step">
+              <span class="showcase-install-icon">
+                <HugeIcon icon={step.icon} size={28} />
+              </span>
+              <div>
+                <p class="showcase-install-title">{step.title}</p>
+                <p class="showcase-install-detail">{step.detail}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+        </div>
+      </div>
+
+      <div id="getting-started" class="showcase-start" style="--accent: #6366f1">
+        <div class="showcase-card-deco showcase-card-deco--panel showcase-card-deco--panel-code" aria-hidden="true">
+          <div class="showcase-card-deco-icon">
+            <HugeIcon icon={CodeIcon} size={160} />
+          </div>
+          <span class="showcase-card-deco-text">DEV</span>
+        </div>
+        <div class="showcase-panel-content">
+        <p class="showcase-section-tag">{s.gettingStartedTag}</p>
+        <h3 class="showcase-section-title">{s.gettingStartedTitle}</h3>
+
+        <ol class="showcase-usage">
+          {usageSteps.map((step, index) => (
+            <li class="showcase-usage-step">
+              <span class="showcase-usage-icon">
+                <HugeIcon icon={step.icon} size={28} />
+              </span>
+              <span class="showcase-usage-num">{String(index + 1).padStart(2, '0')}</span>
+              <span>{step.text}</span>
+            </li>
+          ))}
+        </ol>
+
+        <div class="showcase-build">
+          <div class="showcase-build-header">
+            <span>{s.buildFromSource}</span>
+            <span class="showcase-build-badge">{s.buildBadge}</span>
+          </div>
+          <pre class="showcase-build-code"><code>{`git clone https://github.com/XiaoXianThis/Origami.git
+cd Origami
+./scripts/package.sh 0.1.0
+open dist/Origami.app`}</code></pre>
+        </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部 CTA -->
+    <footer class="showcase-cta">
+      <div class="showcase-card-deco showcase-card-deco--cta" aria-hidden="true" style="--accent: #00b7eb">
+        <div class="showcase-card-deco-icon">
+          <HugeIcon icon={GroupLayersIcon} size={200} />
+        </div>
+        <span class="showcase-card-deco-text">GO</span>
+      </div>
+      <div class="showcase-cta-content">
+      <p class="showcase-cta-label">{s.ctaLabel}</p>
+      <h3 class="showcase-cta-title">
+        {s.ctaTitlePrefix}<span class="text-gradient-brand">{s.ctaTitleHighlight}</span>
+      </h3>
+      <p class="showcase-cta-lead">
+        {s.ctaLead}
+      </p>
+      <div class="showcase-cta-btns">
+        <a href={dmgUrl} class="btn-primary showcase-btn-lg">{s.ctaDownload}</a>
+        <a
+          href="https://github.com/XiaoXianThis/Origami"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn-secondary"
+        >
+          {s.ctaGithub}
+        </a>
+      </div>
+      </div>
+    </footer>
+  </div>
+</section>
+
+<style>
+  .showcase {
+    position: relative;
+    padding: clamp(4rem, 8vw, 7rem) clamp(1rem, 3vw, 1.5rem);
+  }
+
+  .showcase-inner {
+    position: relative;
+    z-index: 1;
+    max-width: 72rem;
+    margin: 0 auto;
+  }
+
+  /* Hero */
+  .showcase-hero {
+    max-width: 44rem;
+    margin-bottom: clamp(3rem, 6vw, 5rem);
+  }
+
+  .showcase-hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .showcase-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.85rem;
+    border-radius: 9999px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #007bb8;
+    background: rgba(0, 212, 255, 0.1);
+    border: 1px solid rgba(0, 153, 204, 0.2);
+  }
+
+  .showcase-pill--ghost {
+    color: var(--site-muted);
+    background: var(--site-card-bg);
+    border-color: var(--site-border);
+  }
+
+  .showcase-title-accent {
+    background: linear-gradient(135deg, #0099cc 0%, #00d4ff 40%, #0056b3 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .showcase-lead {
+    margin-top: 1.25rem;
+    max-width: 36rem;
+    font-size: clamp(1.0625rem, 1.5vw, 1.25rem);
+    line-height: 1.7;
+    color: var(--site-muted);
+  }
+
+  .showcase-lead-em {
+    color: var(--site-text-strong);
+    font-weight: 600;
+  }
+
+  /* Marquee */
+  .showcase-marquee {
+    position: relative;
+    width: 100vw;
+    max-width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-bottom: clamp(3.5rem, 7vw, 6rem);
+    overflow: hidden;
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 8%,
+      black 92%,
+      transparent
+    );
+  }
+
+  .showcase-marquee-track {
+    display: flex;
+    width: max-content;
+    gap: 1rem;
+    padding: 0.25rem 0 0.5rem;
+    animation: showcase-marquee 48s linear infinite;
+    will-change: transform;
+  }
+
+  .showcase-marquee:hover .showcase-marquee-track {
+    animation-play-state: paused;
+  }
+
+  @keyframes showcase-marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  .showcase-bento-card {
+    position: relative;
+    display: flex;
+    flex: 0 0 clamp(16rem, 24vw, 20rem);
+    width: clamp(16rem, 24vw, 20rem);
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0;
+    border-radius: 1.25rem;
+    border: 1px solid var(--site-card-border);
+    background: var(--site-card-bg);
+    backdrop-filter: blur(16px);
+    box-shadow:
+      0 1px 2px rgba(15, 50, 90, 0.04),
+      0 8px 32px rgba(15, 50, 90, 0.06);
+    transition:
+      transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.35s ease,
+      border-color 0.35s ease;
+  }
+
+  :global(.dark) .showcase-bento-card {
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.15),
+      0 8px 32px rgba(0, 0, 0, 0.2);
+  }
+
+  /* 卡片背景装饰：超大图标 + 超大文字，透明渐变 */
+  .showcase-card-deco {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .showcase-card-deco-icon {
+    position: absolute;
+    right: -1.25rem;
+    bottom: -1.5rem;
+    color: var(--accent, #0099cc);
+    opacity: 1;
+    mask-image: radial-gradient(ellipse 75% 75% at 75% 85%, black 0%, transparent 72%);
+    -webkit-mask-image: radial-gradient(ellipse 75% 75% at 75% 85%, black 0%, transparent 72%);
+  }
+
+  .showcase-card-deco-icon :global(svg) {
+    display: block;
+    opacity: 0.14;
+  }
+
+  .showcase-card-deco-text {
+    position: absolute;
+    right: 0.75rem;
+    top: -0.15rem;
+    font-size: clamp(3.5rem, 9vw, 5.5rem);
+    font-weight: 800;
+    letter-spacing: -0.06em;
+    line-height: 1;
+    user-select: none;
+    background: linear-gradient(
+      165deg,
+      transparent 0%,
+      color-mix(in srgb, var(--accent, #0099cc) 6%, transparent) 35%,
+      color-mix(in srgb, var(--accent, #0099cc) 16%, transparent) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .showcase-card-deco--mode .showcase-card-deco-icon {
+    right: -0.75rem;
+    bottom: -1rem;
+  }
+
+  .showcase-card-deco--mode .showcase-card-deco-icon :global(svg) {
+    opacity: 0.1;
+  }
+
+  .showcase-card-deco--mode .showcase-card-deco-text {
+    font-size: clamp(2.75rem, 7vw, 4rem);
+    top: auto;
+    bottom: -0.35rem;
+    right: 0.5rem;
+  }
+
+  .showcase-card-deco--panel .showcase-card-deco-icon {
+    right: -2rem;
+    bottom: -2.5rem;
+  }
+
+  .showcase-card-deco--panel .showcase-card-deco-icon :global(svg) {
+    opacity: 0.12;
+  }
+
+  .showcase-card-deco--panel .showcase-card-deco-text {
+    font-size: clamp(4rem, 12vw, 7rem);
+    right: 0.25rem;
+    top: -0.5rem;
+  }
+
+  .showcase-card-deco--panel-code .showcase-card-deco-icon :global(svg) {
+    opacity: 0.1;
+  }
+
+  .showcase-bento-art {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    min-height: 8.5rem;
+    padding: 1.5rem 1rem 1.125rem;
+    overflow: hidden;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.45);
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--accent) 8%, transparent) 0%,
+      transparent 100%
+    );
+  }
+
+  .showcase-bento-art-icon {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    color: var(--accent);
+  }
+
+  .showcase-bento-body {
+    position: relative;
+    z-index: 1;
+    padding: 1.125rem 1.25rem 1.25rem;
+  }
+
+  .showcase-bento-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(0, 212, 255, 0.35);
+    box-shadow:
+      0 4px 12px rgba(0, 153, 204, 0.08),
+      0 16px 48px rgba(15, 50, 90, 0.1);
+  }
+
+  .showcase-bento-card:hover .showcase-card-deco-icon :global(svg) {
+    opacity: 0.2;
+  }
+
+  .showcase-bento-title {
+    font-size: 1.0625rem;
+    font-weight: 600;
+    color: var(--site-text-strong);
+  }
+
+  .showcase-bento-desc {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.65;
+    color: var(--site-muted);
+  }
+
+  .showcase-bento-mini {
+    position: relative;
+    z-index: 1;
+    transform: rotate(-1.5deg) scale(0.92);
+  }
+
+  /* 卡片内迷你图形 */
+  .showcase-mini-graphic {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+  }
+
+  .showcase-mini-graphic--spark .showcase-mini-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 9999px;
+    background: rgba(148, 163, 184, 0.45);
+  }
+
+  .showcase-mini-dot--active {
+    width: 0.625rem;
+    height: 0.625rem;
+    background: var(--accent);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 50%, transparent);
+  }
+
+  .showcase-mini-window {
+    width: 2rem;
+    height: 1.35rem;
+    border-radius: 0.3rem;
+    border: 1.5px solid rgba(0, 153, 204, 0.35);
+    background: rgba(255, 255, 255, 0.8);
+  }
+
+  .showcase-mini-window--target {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+
+  .showcase-mini-arrow {
+    font-size: 0.75rem;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .showcase-mini-graphic--sliders {
+    flex-direction: column;
+    gap: 0.35rem;
+    width: 5.5rem;
+  }
+
+  .showcase-mini-track {
+    position: relative;
+    width: 100%;
+    height: 0.25rem;
+    border-radius: 9999px;
+    background: rgba(148, 163, 184, 0.25);
+  }
+
+  .showcase-mini-thumb {
+    position: absolute;
+    top: 50%;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 9999px;
+    background: var(--accent);
+    transform: translate(-50%, -50%);
+  }
+
+  .showcase-mini-screen {
+    width: 2.5rem;
+    height: 1.5rem;
+    border-radius: 0.35rem;
+    border: 1.5px solid rgba(0, 153, 204, 0.4);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(224, 242, 254, 0.8));
+  }
+
+  .showcase-mini-screen--off {
+    opacity: 0.35;
+    transform: translateX(-0.75rem) scale(0.85);
+    border-style: dashed;
+  }
+
+  .showcase-mini-swatch {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 0.5rem;
+    border: 1.5px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 2px 8px rgba(15, 50, 90, 0.1);
+  }
+
+  .showcase-mini-swatch--light {
+    background: linear-gradient(135deg, #fff, #e0f2fe);
+  }
+
+  .showcase-mini-swatch--dark {
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    transform: translateX(-0.5rem);
+  }
+
+  .showcase-tab-bar {
+    display: flex;
+    gap: 0.375rem;
+    padding: 0.5rem;
+    border-radius: 0.875rem;
+    background: rgba(15, 23, 42, 0.04);
+    border: 1px solid rgba(0, 153, 204, 0.12);
+    transform: rotate(-2deg);
+  }
+
+  .showcase-tab {
+    padding: 0.4rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #64748b;
+    background: rgba(255, 255, 255, 0.6);
+    white-space: nowrap;
+  }
+
+  .showcase-tab--active {
+    color: #fff;
+    background: linear-gradient(135deg, #00d4ff, #0099cc);
+    box-shadow: 0 2px 8px rgba(0, 153, 204, 0.3);
+  }
+
+  .showcase-tab--dim {
+    color: #94a3b8;
+    background: transparent;
+  }
+
+  /* Modes */
+  .showcase-modes {
+    margin-bottom: clamp(3.5rem, 7vw, 6rem);
+  }
+
+  .showcase-modes-title {
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    color: var(--site-text-strong);
+  }
+
+  .showcase-modes-lead {
+    margin-top: 0.75rem;
+    margin-bottom: 1.5rem;
+    max-width: 40rem;
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: var(--site-muted);
+  }
+
+  .showcase-modes-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+  }
+
+  .showcase-mode-card:nth-child(5) {
+    grid-column: span 2;
+  }
+
+  .showcase-section-tag {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #0099cc;
+  }
+
+  .showcase-section-title {
+    margin-top: 0.5rem;
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    color: var(--site-text-strong);
+  }
+
+  .showcase-mode-card {
+    position: relative;
+    display: flex;
+    gap: 1rem;
+    padding: 1.125rem 1.25rem;
+    overflow: hidden;
+    border-radius: 1rem;
+    border: 1px solid var(--site-card-border);
+    background: var(--site-card-bg);
+    transition:
+      transform 0.3s ease,
+      border-color 0.3s ease,
+      box-shadow 0.3s ease;
+  }
+
+  .showcase-mode-icon {
+    position: relative;
+    z-index: 1;
+    flex-shrink: 0;
+    display: flex;
+    align-self: flex-start;
+    color: var(--accent, #0099cc);
+  }
+
+  .showcase-mode-content {
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .showcase-mode-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(0, 212, 255, 0.4);
+    box-shadow: 0 8px 24px rgba(0, 153, 204, 0.1);
+  }
+
+  .showcase-mode-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.625rem;
+  }
+
+  .showcase-mode-index {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: #94a3b8;
+  }
+
+  .showcase-mode-tag {
+    padding: 0.15rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.625rem;
+    font-weight: 600;
+    color: #007bb8;
+    background: rgba(0, 212, 255, 0.12);
+  }
+
+  .showcase-mode-name {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--site-text-strong);
+  }
+
+  .showcase-mode-desc {
+    margin-top: 0.375rem;
+    font-size: 0.75rem;
+    line-height: 1.55;
+    color: var(--site-muted);
+  }
+
+  .showcase-permission {
+    display: flex;
+    gap: 0.875rem;
+    align-items: flex-start;
+    margin-top: 1.5rem;
+    padding: 1rem 1.25rem;
+    border-radius: 1rem;
+    border: 1px dashed rgba(0, 153, 204, 0.25);
+    background: rgba(0, 212, 255, 0.06);
+  }
+
+  .showcase-permission-icon {
+    flex-shrink: 0;
+    color: #0099cc;
+    margin-top: 0.1rem;
+  }
+
+  .showcase-permission p {
+    font-size: 0.8125rem;
+    line-height: 1.65;
+    color: var(--site-muted);
+  }
+
+  /* Download + Start */
+  .showcase-action {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: clamp(3rem, 6vw, 5rem);
+  }
+
+  .showcase-download,
+  .showcase-start {
+    position: relative;
+    overflow: hidden;
+    padding: clamp(1.5rem, 3vw, 2rem);
+    border-radius: 1.5rem;
+    border: 1px solid var(--site-card-border);
+    background: var(--site-card-bg);
+    backdrop-filter: blur(16px);
+  }
+
+  .showcase-panel-content {
+    position: relative;
+    z-index: 1;
+  }
+
+  .showcase-download-lead {
+    margin-top: 0.75rem;
+    font-size: 0.9375rem;
+    line-height: 1.65;
+    color: var(--site-muted);
+  }
+
+  .showcase-download-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+  }
+
+  .showcase-btn-lg {
+    padding: 0.875rem 1.75rem;
+  }
+
+  .showcase-download-req {
+    margin-top: 0.75rem;
+    font-size: 0.75rem;
+    color: #94a3b8;
+  }
+
+  .showcase-install {
+    list-style: none;
+    padding: 0;
+    margin: 1.75rem 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .showcase-install-step {
+    display: flex;
+    gap: 0.875rem;
+  }
+
+  .showcase-install-icon,
+  .showcase-usage-icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    color: #0099cc;
+  }
+
+  .showcase-install-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--site-text-strong);
+  }
+
+  .showcase-install-detail {
+    margin-top: 0.15rem;
+    font-size: 0.8125rem;
+    line-height: 1.55;
+    color: var(--site-muted);
+  }
+
+  .showcase-usage {
+    list-style: none;
+    padding: 0;
+    margin: 1.5rem 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+  }
+
+  .showcase-usage-step {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid rgba(0, 153, 204, 0.1);
+    font-size: 0.9375rem;
+    color: var(--site-text);
+  }
+
+  .showcase-usage-step:last-child {
+    border-bottom: none;
+  }
+
+  .showcase-usage-num {
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: #94a3b8;
+  }
+
+  .showcase-build {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    border-radius: 1rem;
+    background: rgba(15, 23, 42, 0.92);
+  }
+
+  .showcase-build-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #94a3b8;
+  }
+
+  .showcase-build-badge {
+    padding: 0.15rem 0.5rem;
+    border-radius: 0.375rem;
+    font-size: 0.625rem;
+    color: #7dd3fc;
+    background: rgba(125, 211, 252, 0.12);
+  }
+
+  .showcase-build-code {
+    overflow-x: auto;
+    font-size: 0.75rem;
+    line-height: 1.7;
+    color: #e0f2fe;
+  }
+
+  /* CTA */
+  .showcase-cta {
+    position: relative;
+    overflow: hidden;
+    text-align: center;
+    padding: clamp(2.5rem, 5vw, 4rem) clamp(1.5rem, 4vw, 3rem);
+    border-radius: 2rem;
+    border: 1px solid rgba(0, 212, 255, 0.2);
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0, 212, 255, 0.12), transparent),
+      linear-gradient(180deg, var(--site-card-bg) 0%, rgb(230 247 255 / 0.2) 100%);
+    backdrop-filter: blur(20px);
+  }
+
+  :global(.dark) .showcase-cta {
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0, 212, 255, 0.08), transparent),
+      linear-gradient(180deg, var(--site-card-bg) 0%, rgb(15 23 42 / 0.5) 100%);
+  }
+
+  .showcase-card-deco--cta .showcase-card-deco-icon {
+    right: 50%;
+    bottom: -3rem;
+    transform: translateX(50%);
+  }
+
+  .showcase-card-deco--cta .showcase-card-deco-icon :global(svg) {
+    opacity: 0.08;
+  }
+
+  .showcase-card-deco--cta .showcase-card-deco-text {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    top: 0.5rem;
+    font-size: clamp(5rem, 18vw, 9rem);
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      color-mix(in srgb, var(--accent) 8%, transparent) 50%,
+      color-mix(in srgb, var(--accent) 14%, transparent) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+
+  .showcase-cta-content {
+    position: relative;
+    z-index: 1;
+  }
+
+  .showcase-cta-label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: #0099cc;
+  }
+
+  .showcase-cta-title {
+    margin-top: 0.75rem;
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+    color: var(--site-text-strong);
+  }
+
+  .showcase-cta-lead {
+    max-width: 32rem;
+    margin: 1rem auto 0;
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--site-muted);
+  }
+
+  .showcase-cta-btns {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.875rem;
+    margin-top: 2rem;
+  }
+
+  @keyframes showcase-fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .showcase-marquee-track {
+      animation: none;
+      flex-wrap: wrap;
+      width: auto;
+      justify-content: center;
+      padding-inline: clamp(1rem, 3vw, 1.5rem);
+    }
+
+    .showcase-marquee {
+      width: 100%;
+      max-width: 100%;
+      margin-left: 0;
+      mask-image: none;
+    }
+
+    .showcase-bento-card[aria-hidden='true'] {
+      display: none;
+    }
+  }
+
+  @media (max-width: 1024px) {
+    .showcase-modes-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .showcase-mode-card:nth-child(5),
+    .showcase-mode-card:nth-child(7) {
+      grid-column: span 1;
+    }
+
+    .showcase-mode-card:nth-child(7):last-child {
+      grid-column: span 2;
+    }
+
+    .showcase-action {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .showcase-modes-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

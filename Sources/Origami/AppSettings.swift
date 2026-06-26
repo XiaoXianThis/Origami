@@ -141,6 +141,10 @@ enum AppSettings {
     static let labelOffsetYKey = "Origami.labelOffsetY"
     static let labelMaxWidthKey = "Origami.labelMaxWidth"
     static let windowSwitchSizeModeKey = "Origami.windowSwitchSizeMode"
+    static let restoreOnLaunchKey = "Origami.restoreOnLaunch"
+    static let restoreOnExitKey = "Origami.restoreOnExit"
+    static let autoGroupSameAppWindowsKey = "Origami.autoGroupSameAppWindows"
+    static let allowCrossAppGroupingKey = "Origami.allowCrossAppGrouping"
 
     static let defaultDetachDelay: Double = 2
     static let minDetachDelay: Double = 0
@@ -154,6 +158,10 @@ enum AppSettings {
     static let defaultTheme = AppTheme.system
     static let defaultHideMode = WindowHideMode.moveOffscreen
     static let defaultWindowSwitchSizeMode = WindowSwitchSizeMode.matchCurrent
+    static let defaultRestoreOnLaunch = true
+    static let defaultRestoreOnExit = true
+    static let defaultAutoGroupSameAppWindows = false
+    static let defaultAllowCrossAppGrouping = true
     static let defaultTabMinWidth: Double = 120
     static let defaultLabelMaxWidth: Double = 120
     static let minLabelOffset: Double = -200
@@ -291,6 +299,50 @@ enum AppSettings {
         }
         set {
             UserDefaults.standard.set(newValue.rawValue, forKey: windowSwitchSizeModeKey)
+        }
+    }
+
+    static var restoreOnLaunch: Bool {
+        get {
+            guard UserDefaults.standard.object(forKey: restoreOnLaunchKey) != nil else { return defaultRestoreOnLaunch }
+            return UserDefaults.standard.bool(forKey: restoreOnLaunchKey)
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: restoreOnLaunchKey)
+        }
+    }
+
+    static var restoreOnExit: Bool {
+        get {
+            guard UserDefaults.standard.object(forKey: restoreOnExitKey) != nil else { return defaultRestoreOnExit }
+            return UserDefaults.standard.bool(forKey: restoreOnExitKey)
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: restoreOnExitKey)
+        }
+    }
+
+    static var autoGroupSameAppWindows: Bool {
+        get {
+            guard UserDefaults.standard.object(forKey: autoGroupSameAppWindowsKey) != nil else {
+                return defaultAutoGroupSameAppWindows
+            }
+            return UserDefaults.standard.bool(forKey: autoGroupSameAppWindowsKey)
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: autoGroupSameAppWindowsKey)
+        }
+    }
+
+    static var allowCrossAppGrouping: Bool {
+        get {
+            guard UserDefaults.standard.object(forKey: allowCrossAppGroupingKey) != nil else {
+                return defaultAllowCrossAppGrouping
+            }
+            return UserDefaults.standard.bool(forKey: allowCrossAppGroupingKey)
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: allowCrossAppGroupingKey)
         }
     }
 

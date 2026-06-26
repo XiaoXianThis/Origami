@@ -1,23 +1,33 @@
-<footer class="border-t border-sky-200/50 px-4 py-10 sm:px-6">
-  <div class="mx-auto flex max-w-6xl min-w-0 flex-col items-center justify-between gap-4 text-sm text-slate-500 md:flex-row">
+---
+import type { Translations } from '../i18n';
+
+interface Props {
+  t: Translations;
+}
+
+const { t } = Astro.props;
+---
+
+<footer class="border-t border-sky-200/50 px-4 py-10 dark:border-slate-700/50 sm:px-6">
+  <div class="mx-auto flex max-w-6xl min-w-0 flex-col items-center justify-between gap-4 text-sm text-slate-500 dark:text-slate-400 md:flex-row">
     <p>
       © {new Date().getFullYear()} Origami · MIT License
-      <span class="mx-1.5 text-slate-300">·</span>
+      <span class="mx-1.5 text-slate-300 dark:text-slate-600">·</span>
       <a
         href="https://space.bilibili.com/12724008"
         target="_blank"
         rel="noopener noreferrer"
-        class="text-slate-400 transition hover:text-cyan-700"
+        class="text-slate-400 transition hover:text-cyan-700 dark:hover:text-cyan-400"
       >
-        开发：大不6仙
+        {t.footer.developer}
       </a>
     </p>
     <div class="flex items-center gap-6">
-      <a href="https://github.com/XiaoXianThis/Origami" target="_blank" rel="noopener noreferrer" class="transition hover:text-cyan-700">
+      <a href="https://github.com/XiaoXianThis/Origami" target="_blank" rel="noopener noreferrer" class="transition hover:text-cyan-700 dark:hover:text-cyan-400">
         GitHub
       </a>
-      <a href="#getting-started" class="transition hover:text-cyan-700">
-        开始使用
+      <a href="#getting-started" class="transition hover:text-cyan-700 dark:hover:text-cyan-400">
+        {t.footer.gettingStarted}
       </a>
     </div>
   </div>

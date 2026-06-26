@@ -1,6 +1,10 @@
 import SwiftUI
 
 struct MainView: View {
+    private static let authorBilibiliURL = URL(string: "https://space.bilibili.com/12724008")!
+    private static let githubProjectURL = URL(string: "https://github.com/XiaoXianThis/Origami")!
+    private static let officialWebsiteURL = URL(string: "https://origami.wxian.cc/")!
+
     @AppStorage(AppSettings.themeKey) private var themeRawValue = AppSettings.defaultTheme.rawValue
     @AppStorage(AppSettings.hideModeKey) private var hideModeRawValue = AppSettings.hideMode.rawValue
     @AppStorage(AppSettings.detachOnDragEnabledKey) private var detachOnDragEnabled = AppSettings.detachOnDragEnabled
@@ -12,6 +16,10 @@ struct MainView: View {
     @AppStorage(AppSettings.labelOffsetYKey) private var labelOffsetY = AppSettings.defaultLabelOffsetY
     @AppStorage(AppSettings.labelMaxWidthKey) private var labelMaxWidth = AppSettings.defaultLabelMaxWidth
     @AppStorage(AppSettings.windowSwitchSizeModeKey) private var windowSwitchSizeModeRawValue = AppSettings.defaultWindowSwitchSizeMode.rawValue
+    @AppStorage(AppSettings.restoreOnLaunchKey) private var restoreOnLaunch = AppSettings.defaultRestoreOnLaunch
+    @AppStorage(AppSettings.restoreOnExitKey) private var restoreOnExit = AppSettings.defaultRestoreOnExit
+    @AppStorage(AppSettings.autoGroupSameAppWindowsKey) private var autoGroupSameAppWindows = AppSettings.defaultAutoGroupSameAppWindows
+    @AppStorage(AppSettings.allowCrossAppGroupingKey) private var allowCrossAppGrouping = AppSettings.defaultAllowCrossAppGrouping
 
     @State private var detectedOffscreenWindows: [OffscreenWindowInfo] = []
 
@@ -94,17 +102,23 @@ struct MainView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                header
-                themeSection
-                hideModeSection
-                windowSwitchSection
-                labelPositionSection
-                detachSection
-                offscreenWindowsSection
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    header
+                    themeSection
+                    hideModeSection
+                    windowSwitchSection
+                    groupingSection
+                    labelPositionSection
+                    detachSection
+                    restoreWindowsSection
+                    offscreenWindowsSection
+                }
+                .padding(24)
             }
-            .padding(24)
+
+            authorCreditFooter
         }
         .frame(width: 620, height: 720)
         .preferredColorScheme(preferredColorScheme)
@@ -129,6 +143,46 @@ struct MainView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    private var authorCreditFooter: some View {
+        VStack(spacing: 0) {
+            Divider()
+
+            HStack(spacing: 0) {
+                Text(verbatim: "© \(String(Calendar.current.component(.year, from: Date()))) Origami")
+                footerSeparator
+                Text("作者：")
+                Link("大不6仙", destination: Self.authorBilibiliURL)
+                footerSeparator
+                Link(destination: Self.authorBilibiliURL) {
+                    Label("B站主页", systemImage: "link")
+                        .labelStyle(.titleAndIcon)
+                }
+                footerSeparator
+                Link(destination: Self.githubProjectURL) {
+                    Label("GitHub", systemImage: "link")
+                        .labelStyle(.titleAndIcon)
+                }
+                footerSeparator
+                Link(destination: Self.officialWebsiteURL) {
+                    Label("官方网站", systemImage: "link")
+                        .labelStyle(.titleAndIcon)
+                }
+            }
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 10)
+            .background(.bar)
+        }
+    }
+
+    private var footerSeparator: some View {
+        Text("·")
+            .foregroundStyle(.tertiary)
+            .padding(.horizontal, 6)
     }
 
     private var header: some View {
@@ -193,6 +247,27 @@ struct MainView: View {
         }
     }
 
+    private var groupingSection: some View {
+        settingsSection(title: "窗口分组") {
+            Toggle("同应用窗口自动归组", isOn: $autoGroupSameAppWindows)
+            Toggle("允许不同应用窗口合并成组", isOn: $allowCrossAppGrouping)
+
+            Text(autoGroupSameAppWindows
+                ? "同一应用的新窗口会自动加入该应用已有窗口所在的分组。"
+                : "关闭后，同一应用的新窗口不会自动合并，需手动拖拽归组。")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(allowCrossAppGrouping
+                ? "可以将不同应用的窗口拖拽合并到同一分组。"
+                : "关闭后，只能将同一应用的窗口合并到同一分组。")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
     private var labelPositionSection: some View {
         settingsSection(title: "标签位置") {
             Picker("水平位置", selection: labelHorizontalAnchor) {
@@ -251,6 +326,21 @@ struct MainView: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var restoreWindowsSection: some View {
+        settingsSection(title: "窗口复原") {
+            Text("复原本工具隐藏的窗口，并将屏外、越界或缩小的窗口移回屏幕内；手动复原还会解散全部分组。")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Toggle("启动时自动复原窗口位置", isOn: $restoreOnLaunch)
+            Toggle("退出时自动复原窗口位置", isOn: $restoreOnExit)
+
+            Button("复原全部窗口", action: restoreAllWindows)
+                .buttonStyle(.borderedProminent)
         }
     }
 
@@ -348,6 +438,11 @@ struct MainView: View {
 
     private func refreshOffscreenWindows() {
         detectedOffscreenWindows = WindowOverlayManager.shared.offscreenWindows()
+    }
+
+    private func restoreAllWindows() {
+        WindowOverlayManager.shared.restoreAllWindowsManually()
+        refreshOffscreenWindows()
     }
 
     private func restoreOffscreenWindow(_ windowID: CGWindowID) {

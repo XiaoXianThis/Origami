@@ -2,23 +2,20 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Hero from '../components/Hero.astro';
-import DemoSection from '../components/DemoSection.astro';
-import FeatureGrid from '../components/FeatureGrid.astro';
-import HideModes from '../components/HideModes.astro';
-import GettingStarted from '../components/GettingStarted.astro';
+import ProductShowcase from '../components/ProductShowcase.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import AuthorCredit from '../components/AuthorCredit.astro';
+import { getTranslations } from '../i18n';
+
+const t = getTranslations('zh');
 ---
 
-<BaseLayout>
-  <SiteHeader />
+<BaseLayout locale="zh" t={t}>
+  <SiteHeader t={t} />
   <main class="min-w-0 max-w-full overflow-x-clip">
-    <Hero />
-    <DemoSection />
-    <FeatureGrid />
-    <HideModes />
-    <GettingStarted />
+    <Hero t={t} />
+    <ProductShowcase t={t} />
   </main>
-  <SiteFooter />
-  <AuthorCredit />
+  <SiteFooter t={t} />
+  <AuthorCredit t={t} />
 </BaseLayout>

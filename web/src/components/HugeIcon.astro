@@ -1,0 +1,31 @@
+---
+type IconNode = ['path', Record<string, string>];
+type IconSvgElement = IconNode[];
+
+interface Props {
+  icon: IconSvgElement;
+  size?: number;
+  class?: string;
+}
+
+const { icon, size = 24, class: className = '' } = Astro.props;
+---
+
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width={size}
+  height={size}
+  viewBox="0 0 24 24"
+  fill="none"
+  class={className}
+  aria-hidden="true"
+>
+  {
+    icon.map(([tag, attrs]) => {
+      if (tag === 'path') {
+        return <path {...attrs} />;
+      }
+      return null;
+    })
+  }
+</svg>

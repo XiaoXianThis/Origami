@@ -46,6 +46,10 @@ sed "s/VERSION_PLACEHOLDER/${VERSION}/g" "$ROOT/Resources/Info.plist" > "$APP_DI
 cp "$BINARY" "$APP_DIR/Contents/MacOS/Origami"
 chmod +x "$APP_DIR/Contents/MacOS/Origami"
 
+echo "==> Generating app icon"
+"$ROOT/scripts/generate-app-icon.sh"
+cp "$ROOT/Resources/AppIcon.icns" "$APP_DIR/Contents/Resources/"
+
 echo "==> Ad-hoc signing"
 codesign --force --deep --sign - "$APP_DIR"
 

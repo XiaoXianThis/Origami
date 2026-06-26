@@ -1,0 +1,35 @@
+---
+import { getAlternateLocale, getLocalePath, type Locale } from '../i18n';
+
+interface Props {
+  locale: Locale;
+  label: string;
+  switchTo: string;
+}
+
+const { locale, label, switchTo } = Astro.props;
+const altLocale = getAlternateLocale(locale);
+const altPath = getLocalePath(altLocale);
+---
+
+<a
+  href={altPath}
+  class="locale-toggle inline-flex items-center rounded-full border border-sky-200/80 bg-white/50 px-2.5 py-1.5 text-xs font-medium text-slate-600 backdrop-blur-sm transition hover:border-cyan-300/60 hover:bg-white/80 hover:text-cyan-800 dark:border-slate-600/60 dark:bg-slate-800/60 dark:text-slate-300 dark:hover:border-cyan-500/40 dark:hover:bg-slate-800/90 dark:hover:text-cyan-300 sm:px-3 sm:text-sm"
+  aria-label={`${label}: ${switchTo}`}
+  hreflang={altLocale === 'zh' ? 'zh-CN' : 'en'}
+  lang={altLocale === 'zh' ? 'zh-CN' : 'en'}
+>
+  {switchTo}
+</a>
+
+<script>
+  const STORAGE_KEY = 'origami-locale';
+
+  document.querySelectorAll('.locale-toggle').forEach((link) => {
+    link.addEventListener('click', () => {
+      const hreflang = link.getAttribute('hreflang');
+      if (hreflang === 'zh-CN') localStorage.setItem(STORAGE_KEY, 'zh');
+      else if (hreflang === 'en') localStorage.setItem(STORAGE_KEY, 'en');
+    });
+  });
+</script>

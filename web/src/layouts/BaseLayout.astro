@@ -1,36 +1,65 @@
 ---
 import ScrollBackground from '../components/ScrollBackground.astro';
+import type { Locale, Translations } from '../i18n';
 
 interface Props {
-  title?: string;
-  description?: string;
+  locale?: Locale;
+  t: Translations;
 }
 
-const {
-  title = 'Origami — macOS 窗口分组与无痕切换',
-  description = 'Origami 把多个 macOS 窗口像浏览器标签页一样折叠成组，叠加标签栏，实现快速、无痕的窗口切换。',
-} = Astro.props;
+const { locale = 'zh', t } = Astro.props;
+const htmlLang = locale === 'zh' ? 'zh-CN' : 'en';
 ---
 
 <!doctype html>
-<html lang="zh-CN">
+<html lang={htmlLang}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="description" content={description} />
-    <meta name="theme-color" content="#E0F2F7" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>{title}</title>
+    <meta name="description" content={t.meta.description} />
+    <meta name="theme-color" content={t.meta.themeColor} media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/png" href="/icon.png" />
+    <link rel="apple-touch-icon" href="/icon.png" />
+    {locale === 'zh' ? (
+      <link rel="alternate" hreflang="en" href="/en/" />
+      <link rel="alternate" hreflang="zh-CN" href="/" />
+    ) : (
+      <link rel="alternate" hreflang="zh-CN" href="/" />
+      <link rel="alternate" hreflang="en" href="/en/" />
+    )}
+    <link rel="alternate" hreflang="x-default" href="/" />
+    <title>{t.meta.title}</title>
     <meta name="generator" content={Astro.generator} />
+    <script is:inline>
+      (function () {
+        var themeKey = 'origami-theme';
+        var localeKey = 'origami-locale';
+        var storedTheme = localStorage.getItem(themeKey);
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var theme = storedTheme === 'light' || storedTheme === 'dark' ? storedTheme : prefersDark ? 'dark' : 'light';
+        if (theme === 'dark') document.documentElement.classList.add('dark');
+        document.documentElement.dataset.theme = theme;
+
+        var path = window.location.pathname;
+        var onEnglish = path === '/en' || path.startsWith('/en/');
+        var storedLocale = localStorage.getItem(localeKey);
+        if (!onEnglish && storedLocale === 'en' && path === '/') {
+          window.location.replace('/en/');
+        } else if (onEnglish && storedLocale === 'zh' && (path === '/en' || path === '/en/')) {
+          window.location.replace('/');
+        }
+      })();
+    </script>
   </head>
-  <body class="relative min-h-screen overflow-x-clip bg-gradient-to-b from-[#FAF9F6] via-[#E8F4FC] to-[#D6EBF7] text-slate-800 antialiased selection:bg-cyan-400/30 selection:text-slate-900">
+  <body class="site-body relative min-h-screen overflow-x-clip bg-gradient-to-b from-[var(--site-bg-from)] via-[var(--site-bg-via)] to-[var(--site-bg-to)] text-[var(--site-text)] antialiased selection:bg-cyan-400/30 selection:text-slate-900 dark:selection:text-slate-100">
     <div
-      class="pointer-events-none fixed inset-0 z-0 bg-[url('/theme-bg.png')] bg-cover bg-center opacity-[0.18] mix-blend-soft-light"
+      class="pointer-events-none fixed inset-0 z-0 bg-[url('/theme-bg.png')] bg-cover bg-center opacity-[0.18] mix-blend-soft-light dark:opacity-[0.08]"
       aria-hidden="true"
     ></div>
     <ScrollBackground />
     <div
-      class="pointer-events-none fixed inset-0 z-[2] bg-gradient-to-b from-[#FAF9F6]/80 via-transparent to-[#D6EBF7]/90"
+      class="pointer-events-none fixed inset-0 z-[2] bg-gradient-to-b from-[var(--site-overlay-from)] via-transparent to-[var(--site-overlay-to)]"
       aria-hidden="true"
     ></div>
     <div class="relative z-10 min-w-0 max-w-full overflow-x-clip">

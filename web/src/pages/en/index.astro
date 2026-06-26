@@ -1,0 +1,21 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SiteHeader from '../../components/SiteHeader.astro';
+import Hero from '../../components/Hero.astro';
+import ProductShowcase from '../../components/ProductShowcase.astro';
+import SiteFooter from '../../components/SiteFooter.astro';
+import AuthorCredit from '../../components/AuthorCredit.astro';
+import { getTranslations } from '../../i18n';
+
+const t = getTranslations('en');
+---
+
+<BaseLayout locale="en" t={t}>
+  <SiteHeader t={t} />
+  <main class="min-w-0 max-w-full overflow-x-clip">
+    <Hero t={t} />
+    <ProductShowcase t={t} />
+  </main>
+  <SiteFooter t={t} />
+  <AuthorCredit t={t} />
+</BaseLayout>

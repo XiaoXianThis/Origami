@@ -197,4 +197,17 @@ final class GroupStore {
 
         return changes
     }
+
+    /// 将所有窗口拆成单窗口组，彻底解散现有分组。
+    func dissolveAllGroups() {
+        let allWindowIDs = Array(windowToGroup.keys)
+        groups.removeAll()
+        windowToGroup.removeAll()
+
+        for wid in allWindowIDs {
+            let gid = UUID()
+            groups[gid] = WindowGroup(windowIDs: [wid])
+            windowToGroup[wid] = gid
+        }
+    }
 }
