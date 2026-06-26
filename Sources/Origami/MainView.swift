@@ -19,9 +19,12 @@ struct MainView: View {
     @AppStorage(AppSettings.restoreOnLaunchKey) private var restoreOnLaunch = AppSettings.defaultRestoreOnLaunch
     @AppStorage(AppSettings.restoreOnExitKey) private var restoreOnExit = AppSettings.defaultRestoreOnExit
     @AppStorage(AppSettings.autoGroupSameAppWindowsKey) private var autoGroupSameAppWindows = AppSettings.defaultAutoGroupSameAppWindows
+    @AppStorage(AppSettings.autoGroupFilterModeKey) private var autoGroupFilterModeRawValue = AppSettings.defaultAutoGroupFilterMode.rawValue
     @AppStorage(AppSettings.allowCrossAppGroupingKey) private var allowCrossAppGrouping = AppSettings.defaultAllowCrossAppGrouping
+    @State private var autoGroupAppBundleIDs = AppSettings.autoGroupAppBundleIDs
     @AppStorage(AppSettings.tabSwitchShortcutKeyCodeKey) private var tabSwitchShortcutKeyCode = Int(TabSwitchShortcut.default.keyCode)
     @AppStorage(AppSettings.tabSwitchShortcutModifiersKey) private var tabSwitchShortcutModifiers = Int(bitPattern: TabSwitchShortcut.default.modifiers)
+    @AppStorage(AppSettings.overlayTickRateKey) private var overlayTickRateRawValue = AppSettings.defaultOverlayTickRate.rawValue
 
     @State private var detectedOffscreenWindows: [OffscreenWindowInfo] = []
 
@@ -75,6 +78,20 @@ struct MainView: View {
         )
     }
 
+    private var autoGroupFilterMode: Binding<AutoGroupFilterMode> {
+        Binding(
+            get: { AutoGroupFilterMode(rawValue: autoGroupFilterModeRawValue) ?? AppSettings.defaultAutoGroupFilterMode },
+            set: { autoGroupFilterModeRawValue = $0.rawValue }
+        )
+    }
+
+    private var overlayTickRate: Binding<OverlayTickRate> {
+        Binding(
+            get: { OverlayTickRate(rawValue: overlayTickRateRawValue) ?? AppSettings.defaultOverlayTickRate },
+            set: { overlayTickRateRawValue = $0.rawValue }
+        )
+    }
+
     private var detachDelayBinding: Binding<Double> {
         Binding(
             get: { AppSettings.clampedDetachDelay(detachDelay) },
@@ -109,6 +126,7 @@ struct MainView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     header
                     themeSection
+                    performanceSection
                     hideModeSection
                     windowSwitchSection
                     groupingSection
@@ -124,10 +142,32 @@ struct MainView: View {
         }
         .frame(width: 620, height: 720)
         .preferredColorScheme(preferredColorScheme)
-        .onAppear(perform: refreshOffscreenWindows)
+        .onAppear {
+            refreshOffscreenWindows()
+            autoGroupAppBundleIDs = AppSettings.autoGroupAppBundleIDs
+        }
         .onChange(of: themeRawValue) { _ in
             AppDelegate.shared?.applyTheme()
             WindowOverlayManager.shared.refreshTheme()
+        }
+        .onChange(of: overlayTickRateRawValue) { _ in
+            WindowOverlayManager.shared.refreshTickInterval()
+        }
+    }
+
+    private var performanceSection: some View {
+        settingsSection(title: "性能") {
+            Picker("刷新频率", selection: overlayTickRate) {
+                ForEach(OverlayTickRate.selectableCases) { rate in
+                    Text(rate.title).tag(rate)
+                }
+            }
+            .pickerStyle(.menu)
+
+            Text(overlayTickRate.wrappedValue.description)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -277,6 +317,25 @@ struct MainView: View {
                     .font(.caption)
                     .foregroundStyle(.orange)
                     .fixedSize(horizontal: false, vertical: true)
+
+                Picker("名单模式", selection: autoGroupFilterMode) {
+                    ForEach(AutoGroupFilterMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                Text(autoGroupFilterMode.wrappedValue.description)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if autoGroupFilterMode.wrappedValue != .all {
+                    AutoGroupAppListEditor(
+                        sectionTitle: autoGroupFilterMode.wrappedValue.listSectionTitle,
+                        bundleIDs: $autoGroupAppBundleIDs
+                    )
+                }
             }
 
             Toggle("允许不同应用窗口合并成组", isOn: $allowCrossAppGrouping)

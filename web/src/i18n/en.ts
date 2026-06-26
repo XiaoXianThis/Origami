@@ -114,10 +114,9 @@ export const en: Translations = {
     modes: [
       { name: 'Minimize', description: 'Best compatibility; switching leaves minimize / restore traces.', tag: 'Stable', decor: '01' },
       { name: 'Transparent hide', description: 'More seamless; does not enter the Dock minimize area.', tag: 'Recommended', decor: '02' },
-      { name: 'Stack behind', description: 'Non-active windows shrink and stack behind the current one.', tag: 'Visual', decor: '03' },
-      { name: 'Move off-screen', description: 'Temporarily moves non-active windows off-screen.', tag: 'Classic', decor: '04' },
-      { name: 'Move to another Space', description: 'Temporarily moves to another Space; requires at least two regular desktops.', tag: 'Space', decor: '05' },
-      { name: 'Shrink tiny', description: 'Non-active windows shrink to a tiny size and restore on switch.', tag: 'Light', decor: '06' },
+      { name: 'Move off-screen', description: 'Temporarily moves non-active windows off-screen.', tag: 'Classic', decor: '03' },
+      { name: 'Move to another Space', description: 'Temporarily moves to another Space; requires at least two regular desktops.', tag: 'Space', decor: '04' },
+      { name: 'Shrink tiny', description: 'Non-active windows shrink to a tiny size and restore on switch.', tag: 'Light', decor: '05' },
     ],
     permission:
       'On first launch, grant Origami Accessibility permission in System Settings → Privacy & Security → Accessibility to control window position and state.',

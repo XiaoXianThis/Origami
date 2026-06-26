@@ -2,7 +2,6 @@ import AppKit
 import CoreGraphics
 import Darwin
 import IOKit.hid
-import SwiftUI
 
 @_silgen_name("_AXUIElementGetWindow")
 private func _AXUIElementGetWindow(_ element: AXUIElement, _ identifier: UnsafeMutablePointer<CGWindowID>) -> AXError
@@ -74,56 +73,6 @@ private final class WindowAlphaController {
     }
 }
 
-private final class WindowOrderController {
-    static let shared = WindowOrderController()
-
-    private typealias ConnectionFunction = @convention(c) () -> UInt32
-    private typealias OrderWindowFunction = @convention(c) (UInt32, CGWindowID, Int32, CGWindowID) -> Int32
-
-    private let connectionID: UInt32
-    private let orderWindowFunctions: [OrderWindowFunction]
-
-    private init() {
-        guard let handle = dlopen("/System/Library/PrivateFrameworks/SkyLight.framework/SkyLight", RTLD_LAZY)
-            ?? dlopen("/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices", RTLD_LAZY) else {
-            connectionID = 0
-            orderWindowFunctions = []
-            return
-        }
-
-        let connectionSymbol = dlsym(handle, "SLSMainConnectionID")
-            ?? dlsym(handle, "CGSMainConnectionID")
-            ?? dlsym(handle, "_CGSDefaultConnection")
-
-        guard let connectionSymbol else {
-            connectionID = 0
-            orderWindowFunctions = []
-            return
-        }
-
-        let connection = unsafeBitCast(connectionSymbol, to: ConnectionFunction.self)
-        connectionID = connection()
-
-        orderWindowFunctions = ["SLSOrderWindow", "CGSOrderWindow"].compactMap { name in
-            guard let symbol = dlsym(handle, name) else { return nil }
-            return unsafeBitCast(symbol, to: OrderWindowFunction.self)
-        }
-    }
-
-    @discardableResult
-    func orderWindow(_ windowID: CGWindowID, below relativeWindowID: CGWindowID) -> Bool {
-        guard connectionID != 0, windowID != relativeWindowID else { return false }
-
-        for orderWindow in orderWindowFunctions {
-            if orderWindow(connectionID, windowID, -1, relativeWindowID) == 0 {
-                return true
-            }
-        }
-
-        return false
-    }
-}
-
 private final class WindowTransformController {
     static let shared = WindowTransformController()
 
@@ -158,27 +107,6 @@ private final class WindowTransformController {
             guard let symbol = dlsym(handle, name) else { return nil }
             return unsafeBitCast(symbol, to: SetWindowTransformFunction.self)
         }
-    }
-
-    @discardableResult
-    func setVisualFrame(_ visualFrame: NSRect, for windowID: CGWindowID, actualFrame: NSRect) -> Bool {
-        guard actualFrame.width > 1, actualFrame.height > 1 else { return resetTransform(for: windowID) }
-
-        let scaleX = visualFrame.width / actualFrame.width
-        let scaleY = visualFrame.height / actualFrame.height
-        guard abs(scaleX - 1) > 0.01 || abs(scaleY - 1) > 0.01 else {
-            return resetTransform(for: windowID)
-        }
-
-        let transform = CGAffineTransform(
-            a: scaleX,
-            b: 0,
-            c: 0,
-            d: scaleY,
-            tx: visualFrame.minX - actualFrame.minX,
-            ty: visualFrame.minY - actualFrame.minY
-        )
-        return setTransform(transform, for: windowID)
     }
 
     @discardableResult
@@ -441,15 +369,18 @@ final class WindowOverlayManager {
     private var activeDragWindowID: CGWindowID?
     private var lastDragScreenPoint: NSPoint?
     private var completedDragWindowID: CGWindowID?
-    /// 用户正在拖动移动的窗口；拖动期间隐藏对应标签栏，避免跟随滞后
+    /// 正在移动（或缩放）的窗口；对应标签组在移动期间隐藏
     private var movingWindowIDs = Set<CGWindowID>()
-    /// 上一 tick 的窗口位置，用于检测用户是否在拖动窗口
+    /// 上一 tick 的窗口 frame，用于检测任意原因的位置/尺寸变化
     private var previousTickWindowFrames: [CGWindowID: NSRect] = [:]
+    /// 窗口停止变化后开始计时，用于判定「稳定停止」
+    private var windowMovementStableSince: [CGWindowID: Date] = [:]
+    private let movementStableDuration: TimeInterval = 0.15
     private var missingActiveWindowTicks: [CGWindowID: Int] = [:]
     // groupID → 上次 frame（用于避免无谓刷新）
     private var lastFrames: [UUID: NSRect] = [:]
-    // groupID → 当前 hosting view（用于更新 model）
-    private var hostingViews: [UUID: NSHostingView<AnyView>] = [:]
+    // groupID → 标签栏视图（直接 NSView，避免 SwiftUI 托管开销）
+    private var tabBarViews: [UUID: TabBarNSView] = [:]
     // groupID → 上次窗口 frame（用于 active 窗口被临时隐藏时维持标签位置）
     private var lastWindowFrames: [UUID: NSRect] = [:]
     // 被本工具暂时隐藏的窗口不会因为不在屏幕列表里被移出分组
@@ -460,13 +391,14 @@ final class WindowOverlayManager {
     private var lastKnownAXWindowFrames: [CGWindowID: NSRect] = [:]
     private var hiddenOriginalAXFrames: [CGWindowID: NSRect] = [:]
     private var hiddenOriginalSpaceIDs: [CGWindowID: UInt64] = [:]
-    private var stackedBehindWindowAnchors: [CGWindowID: CGWindowID] = [:]
-    private var stackedBehindTargetFrames: [CGWindowID: NSRect] = [:]
     private var lastAppliedHideMode = AppSettings.hideMode
     private var lastAppliedTheme = AppSettings.theme
     private var lastResolvedIsDark = AppSettings.isDarkMode()
     /// 组内切换进行中时跳过外部焦点同步，避免与标签栏切换互相抢焦点
     private var isGroupSwitchInProgress = false
+    /// 组内切换结束后短暂抑制移动检测，避免 hide/restore 触发的 frame 变化误隐藏标签
+    private var groupSwitchSuppressedMovementUntil: [UUID: Date] = [:]
+    private let groupSwitchMovementSuppressDuration: TimeInterval = 0.5
     /// 快速连切时只保留最后一次目标，避免并发 hide/restore 互相覆盖
     private var pendingGroupSwitch: (wid: CGWindowID, gid: UUID)?
     /// 取消过期的屏外移动补刀回调，防止已恢复窗口被再次移出屏幕
@@ -477,10 +409,28 @@ final class WindowOverlayManager {
     private var workspaceActivationObserver: NSObjectProtocol?
     private let ownProcessID = getpid()
 
+    /// 窗口列表短期缓存，避免 tick 内外重复调用 CGWindowListCopyWindowInfo
+    private var cachedAllWindowList: [[String: Any]]?
+    private var cachedAllWindowListAt = Date.distantPast
+    private let windowListCacheTTL: TimeInterval = 0.05
+    /// 最小化状态缓存，避免每帧 AX 查询
+    private var minimizedWindowCache: [CGWindowID: Bool] = [:]
+    private var lastMinimizedCheckAt = Date.distantPast
+    private let minimizedCheckInterval: TimeInterval = 0.5
+    /// 外部焦点同步节流
+    private var lastFocusCheckAt = Date.distantPast
+    private let focusCheckInterval: TimeInterval = 0.1
+    /// 屏幕高度缓存（tick 内复用）
+    private var cachedScreenHeight: CGFloat = 0
+    /// 当前已应用的 tick 频率
+    private var lastAppliedTickRate = 60
+    /// 自适应模式：当前实际 tick 频率（1~60）
+    private var currentAdaptiveTickRate = 1
+    /// 自适应模式：高频率保持截止时间
+    private var adaptiveHighRateUntil = Date.distantPast
+
     private let minLabelWindowWidth: CGFloat = 200
     private let minLabelWindowHeight: CGFloat = 120
-    private static let labelFollowRefreshRate = 60
-    private let labelFollowRefreshInterval = DispatchTimeInterval.nanoseconds(1_000_000_000 / WindowOverlayManager.labelFollowRefreshRate)
     private let titleRefreshInterval: TimeInterval = 1
 
     // 窗口标题缓存（windowID → title），每 1s 刷新一次
@@ -498,11 +448,61 @@ final class WindowOverlayManager {
         startShortcutEventTap()
         registerWorkspaceActivationObserverIfNeeded()
         guard timer == nil else { return }
+        lastAppliedTickRate = resolvedTickRate()
         let t = DispatchSource.makeTimerSource(queue: .main)
-        t.schedule(deadline: .now(), repeating: labelFollowRefreshInterval)
+        t.schedule(deadline: .now(), repeating: tickInterval(for: lastAppliedTickRate))
         t.setEventHandler { [weak self] in self?.tick() }
         t.resume()
         self.timer = t
+    }
+
+    func refreshTickInterval() {
+        guard timer != nil else { return }
+        currentAdaptiveTickRate = 1
+        adaptiveHighRateUntil = .distantPast
+        applyTickIntervalIfNeeded()
+    }
+
+    private func resolvedTickRate() -> Int {
+        switch AppSettings.overlayTickRate {
+        case .adaptive:
+            currentAdaptiveTickRate
+        default:
+            AppSettings.overlayTickRate.ticksPerSecond ?? 60
+        }
+    }
+
+    private func tickInterval(for rate: Int) -> DispatchTimeInterval {
+        let clamped = max(rate, 1)
+        return .nanoseconds(1_000_000_000 / clamped)
+    }
+
+    private func applyTickIntervalIfNeeded() {
+        let rate = resolvedTickRate()
+        guard rate != lastAppliedTickRate, let timer else { return }
+        lastAppliedTickRate = rate
+        timer.schedule(deadline: .now(), repeating: tickInterval(for: rate))
+    }
+
+    private func updateAdaptiveTickRate(now: Date) {
+        guard AppSettings.overlayTickRate == .adaptive else { return }
+
+        let needsHighRate = !movingWindowIDs.isEmpty
+            || activeDragWindowID != nil
+            || pendingDetachWindowID != nil
+            || isGroupSwitchInProgress
+            || dropHighlightPanel != nil
+
+        if needsHighRate {
+            adaptiveHighRateUntil = now.addingTimeInterval(0.35)
+            currentAdaptiveTickRate = 60
+        } else if now < adaptiveHighRateUntil {
+            currentAdaptiveTickRate = 60
+        } else {
+            currentAdaptiveTickRate = 1
+        }
+
+        applyTickIntervalIfNeeded()
     }
 
     func refreshTheme() {
@@ -519,6 +519,7 @@ final class WindowOverlayManager {
         timer = nil
         isGroupSwitchInProgress = false
         pendingGroupSwitch = nil
+        groupSwitchSuppressedMovementUntil.removeAll()
         lastObservedFocusedWindowID = nil
         clearDragState()
         if AppSettings.restoreOnExit {
@@ -528,7 +529,7 @@ final class WindowOverlayManager {
         overlays.removeAll()
         lastFrames.removeAll()
         lastWindowFrames.removeAll()
-        hostingViews.removeAll()
+        tabBarViews.removeAll()
         hiddenWindowIDs.removeAll()
         windowPIDCache.removeAll()
         lastKnownWindowPIDs.removeAll()
@@ -536,11 +537,10 @@ final class WindowOverlayManager {
         lastKnownAXWindowFrames.removeAll()
         hiddenOriginalAXFrames.removeAll()
         hiddenOriginalSpaceIDs.removeAll()
-        stackedBehindWindowAnchors.removeAll()
-        stackedBehindTargetFrames.removeAll()
         missingActiveWindowTicks.removeAll()
         movingWindowIDs.removeAll()
         previousTickWindowFrames.removeAll()
+        windowMovementStableSince.removeAll()
     }
 
     /// 恢复本工具隐藏的窗口，并将屏外、越界或缩小的窗口移回屏幕内（可在设置中分别开启启动/退出时自动调用）。
@@ -596,12 +596,11 @@ final class WindowOverlayManager {
             removeOverlay(for: gid)
         }
 
-        stackedBehindWindowAnchors.removeAll()
-        stackedBehindTargetFrames.removeAll()
         hiddenOriginalAXFrames.removeAll()
         hiddenWindowIDs.removeAll()
         isGroupSwitchInProgress = false
         pendingGroupSwitch = nil
+        groupSwitchSuppressedMovementUntil.removeAll()
         offscreenMoveGeneration.removeAll()
         groupSwitchGeneration.removeAll()
         tick()
@@ -715,7 +714,7 @@ final class WindowOverlayManager {
             let gid = GroupStore.shared.registerIfNeeded(wid)
             lastWindowFrames[gid] = restoredCGFrame
             if let group = GroupStore.shared.groups[gid] {
-                updateHostingView(gid: gid, group: group)
+                updateTabBarView(gid: gid, group: group)
             }
         }
 
@@ -729,35 +728,33 @@ final class WindowOverlayManager {
         let now = Date()
         let shouldRefreshTitles = now.timeIntervalSince(lastTitleRefreshAt) >= titleRefreshInterval
         if shouldRefreshTitles {
-            refreshTitleCache()
             lastTitleRefreshAt = now
         }
 
-        guard let visibleWindowList = CGWindowListCopyWindowInfo(
-            [.optionOnScreenOnly, .excludeDesktopElements],
-            kCGNullWindowID
-        ) as? [[String: Any]],
-              let allWindowList = CGWindowListCopyWindowInfo(
-                [.optionAll, .excludeDesktopElements],
-                kCGNullWindowID
-              ) as? [[String: Any]] else { return }
+        guard let allWindowList = allWindowList(forceRefresh: true) else { return }
 
-        let screenHeight = NSScreen.screens.first?.frame.height ?? 0
+        cachedScreenHeight = NSScreen.screens.first?.frame.height ?? 0
+        let screenHeight = cachedScreenHeight
         guard screenHeight > 0 else { return }
+
+        if shouldRefreshTitles {
+            refreshTitleCache(from: allWindowList)
+        }
 
         applyHideModeChangeIfNeeded()
         applyThemeChangeIfNeeded()
         finishDragIfMouseReleased()
-        observeExternalWindowFocus()
+        observeExternalWindowFocus(now: now)
 
-        let stageManagerBlockingOverlayBounds = stageManagerBlockingOverlayBounds(in: visibleWindowList)
+        let stageManagerBlockingOverlayBounds = stageManagerBlockingOverlayBounds(in: allWindowList)
 
         // 本轮所有有效 windowID + 位置
         var visibleWindowIDs = Set<CGWindowID>()
         var knownExistingWindowIDs = Set<CGWindowID>()
         var ignoredExistingWindowIDs = Set<CGWindowID>()
         var windowFrames: [CGWindowID: NSRect] = [:]  // 窗口自身 NSRect（非 label）
-        windowPIDCache.removeAll()
+
+        refreshMinimizedCacheIfNeeded(now: now)
 
         for info in allWindowList {
             guard let layer = info[kCGWindowLayer as String] as? Int, layer == 0 else { continue }
@@ -772,20 +769,15 @@ final class WindowOverlayManager {
                 windowPIDCache[wid] = pid
                 lastKnownWindowPIDs[wid] = pid
             }
-        }
 
-        for info in visibleWindowList {
-            guard let layer = info[kCGWindowLayer as String] as? Int, layer == 0 else { continue }
-            guard isOwnProcessWindow(info) == false else { continue }
-            guard isIgnoredSystemWindow(info) == false else { continue }
+            guard windowListEntryIsOnScreen(info) else { continue }
             guard isStageManagerThumbnail(info, matching: stageManagerBlockingOverlayBounds) == false else { continue }
             guard let bounds = info[kCGWindowBounds as String] as? [String: CGFloat] else { continue }
-            guard let wid = info[kCGWindowNumber as String] as? CGWindowID else { continue }
 
             let w = bounds["Width"] ?? 0
             let h = bounds["Height"] ?? 0
             guard w >= minLabelWindowWidth && h >= minLabelWindowHeight else { continue }
-            guard isWindowMinimized(wid) == false else { continue }
+            guard isWindowMinimizedCached(wid) == false else { continue }
 
             let cgX = bounds["X"] ?? 0
             let cgY = bounds["Y"] ?? 0
@@ -829,7 +821,7 @@ final class WindowOverlayManager {
         hiddenWindowIDs.formIntersection(Set(GroupStore.shared.windowToGroup.keys))
         applyWindowRemovalChanges(removalChanges)
         cleanupDisappearedWindows(disappeared)
-        updateMovingWindowState(windowFrames: windowFrames)
+        updateMovingWindowState(windowFrames: windowFrames, now: now)
 
         // 3. 计算每个 group 对应的 overlay frame（以 active 窗口为锚点）
         let groups = GroupStore.shared.groups
@@ -852,23 +844,25 @@ final class WindowOverlayManager {
                 continue
             }
             lastWindowFrames[gid] = winFrame
-            syncStackedBehindWindows(in: group, activeFrame: winFrame)
 
             let labelFrame = labelFrame(for: winFrame, group: group)
-            let hideTabWhileMoving = movingWindowIDs.contains(activeWID)
+            let hideTabWhileMoving = group.windowIDs.contains { movingWindowIDs.contains($0) }
 
             if let existing = overlays[gid] {
                 let changed = lastFrames[gid] != labelFrame
                 if changed {
                     existing.setFrame(labelFrame, display: false)
+                    if let tabBar = tabBarViews[gid] {
+                        tabBar.frame = NSRect(origin: .zero, size: labelFrame.size)
+                    }
                     lastFrames[gid] = labelFrame
                 }
                 if shouldRefreshTitles {
-                    updateHostingView(gid: gid, group: group)
+                    updateTabBarView(gid: gid, group: group)
                 }
                 if hideTabWhileMoving {
                     existing.orderOut(nil)
-                } else {
+                } else if changed || !existing.isVisible {
                     placeOverlay(existing, above: activeWID)
                 }
             } else {
@@ -880,28 +874,89 @@ final class WindowOverlayManager {
                 }
             }
         }
+
+        updateAdaptiveTickRate(now: now)
     }
 
-    /// 根据窗口位置变化 + 鼠标按下状态，判断用户是否正在拖动窗口
-    private func updateMovingWindowState(windowFrames: [CGWindowID: NSRect]) {
-        let mouseDown = NSEvent.pressedMouseButtons & 1 != 0
+    /// 检测窗口 frame 变化（主动拖动、被动动画、缩放等），移动中隐藏标签组，稳定停止后再显示
+    private func updateMovingWindowState(windowFrames: [CGWindowID: NSRect], now: Date) {
+        groupSwitchSuppressedMovementUntil = groupSwitchSuppressedMovementUntil.filter { $0.value > now }
 
-        if mouseDown {
-            for (wid, frame) in windowFrames {
-                guard let previous = previousTickWindowFrames[wid],
-                      windowOriginMoved(from: previous, to: frame) else { continue }
-                movingWindowIDs.insert(wid)
+        if isGroupSwitchInProgress {
+            previousTickWindowFrames = windowFrames
+            return
+        }
+
+        let visibleWIDs = Set(windowFrames.keys)
+        movingWindowIDs.formIntersection(visibleWIDs)
+        windowMovementStableSince = windowMovementStableSince.filter { visibleWIDs.contains($0.key) }
+
+        for (wid, frame) in windowFrames {
+            if isMovementDetectionSuppressed(for: wid, now: now) {
+                previousTickWindowFrames[wid] = frame
+                movingWindowIDs.remove(wid)
+                windowMovementStableSince.removeValue(forKey: wid)
+                continue
             }
-        } else {
-            movingWindowIDs.removeAll()
+
+            guard let previous = previousTickWindowFrames[wid] else { continue }
+
+            if windowFrameChanged(from: previous, to: frame) {
+                let wasMoving = movingWindowIDs.contains(wid)
+                movingWindowIDs.insert(wid)
+                windowMovementStableSince.removeValue(forKey: wid)
+                if !wasMoving {
+                    if AppSettings.overlayTickRate == .adaptive {
+                        adaptiveHighRateUntil = now.addingTimeInterval(0.35)
+                        currentAdaptiveTickRate = 60
+                        applyTickIntervalIfNeeded()
+                    }
+                    hideOverlayForGroupContaining(windowID: wid)
+                }
+            } else if movingWindowIDs.contains(wid) {
+                if let stableSince = windowMovementStableSince[wid] {
+                    if now.timeIntervalSince(stableSince) >= movementStableDuration {
+                        movingWindowIDs.remove(wid)
+                        windowMovementStableSince.removeValue(forKey: wid)
+                    }
+                } else {
+                    windowMovementStableSince[wid] = now
+                }
+            }
         }
 
         previousTickWindowFrames = windowFrames
     }
 
-    private func windowOriginMoved(from previous: NSRect, to current: NSRect) -> Bool {
+    private func isMovementDetectionSuppressed(for wid: CGWindowID, now: Date) -> Bool {
+        guard let gid = GroupStore.shared.groupID(for: wid),
+              let until = groupSwitchSuppressedMovementUntil[gid] else { return false }
+        return now < until
+    }
+
+    private func suppressMovementDetectionForGroup(_ gid: UUID) {
+        let until = Date().addingTimeInterval(groupSwitchMovementSuppressDuration)
+        groupSwitchSuppressedMovementUntil[gid] = until
+        guard let group = GroupStore.shared.groups[gid] else { return }
+        for wid in group.windowIDs {
+            movingWindowIDs.remove(wid)
+            windowMovementStableSince.removeValue(forKey: wid)
+            if let frame = lastKnownWindowFrames[wid] {
+                previousTickWindowFrames[wid] = frame
+            }
+        }
+    }
+
+    private func hideOverlayForGroupContaining(windowID wid: CGWindowID) {
+        guard let gid = GroupStore.shared.groupID(for: wid) else { return }
+        overlays[gid]?.orderOut(nil)
+    }
+
+    private func windowFrameChanged(from previous: NSRect, to current: NSRect) -> Bool {
         abs(previous.origin.x - current.origin.x) > 0.5
             || abs(previous.origin.y - current.origin.y) > 0.5
+            || abs(previous.width - current.width) > 0.5
+            || abs(previous.height - current.height) > 0.5
     }
 
     // MARK: - 标题缓存
@@ -926,16 +981,12 @@ final class WindowOverlayManager {
         for (gid, panel) in overlays {
             panel.appearance = appearance
             if let group = GroupStore.shared.groups[gid] {
-                updateHostingView(gid: gid, group: group)
+                updateTabBarView(gid: gid, group: group)
             }
         }
     }
 
-    private func refreshTitleCache() {
-        guard let list = CGWindowListCopyWindowInfo(
-            [.optionAll],
-            kCGNullWindowID
-        ) as? [[String: Any]] else { return }
+    private func refreshTitleCache(from list: [[String: Any]]) {
         var cache: [CGWindowID: String] = [:]
         for info in list {
             guard isOwnProcessWindow(info) == false else { continue }
@@ -946,6 +997,45 @@ final class WindowOverlayManager {
             cache[wid] = title.isEmpty ? name : title
         }
         titleCache = cache
+    }
+
+    private func allWindowList(forceRefresh: Bool) -> [[String: Any]]? {
+        let now = Date()
+        if !forceRefresh,
+           let cached = cachedAllWindowList,
+           now.timeIntervalSince(cachedAllWindowListAt) < windowListCacheTTL {
+            return cached
+        }
+        guard let list = CGWindowListCopyWindowInfo(
+            [.optionAll, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[String: Any]] else { return nil }
+        cachedAllWindowList = list
+        cachedAllWindowListAt = now
+        return list
+    }
+
+    private func windowListEntryIsOnScreen(_ info: [String: Any]) -> Bool {
+        if let onScreen = info[kCGWindowIsOnscreen as String] as? Int {
+            return onScreen == 1
+        }
+        if let onScreen = info[kCGWindowIsOnscreen as String] as? Bool {
+            return onScreen
+        }
+        return false
+    }
+
+    private func refreshMinimizedCacheIfNeeded(now: Date) {
+        guard now.timeIntervalSince(lastMinimizedCheckAt) >= minimizedCheckInterval else { return }
+        lastMinimizedCheckAt = now
+        minimizedWindowCache.removeAll()
+    }
+
+    private func isWindowMinimizedCached(_ wid: CGWindowID) -> Bool {
+        if let cached = minimizedWindowCache[wid] { return cached }
+        let minimized = isWindowMinimized(wid)
+        minimizedWindowCache[wid] = minimized
+        return minimized
     }
 
     private func title(for wid: CGWindowID) -> String {
@@ -1015,9 +1105,6 @@ final class WindowOverlayManager {
             lastKnownAXWindowFrames.removeValue(forKey: wid)
             hiddenOriginalAXFrames.removeValue(forKey: wid)
             hiddenOriginalSpaceIDs.removeValue(forKey: wid)
-            stackedBehindWindowAnchors.removeValue(forKey: wid)
-            stackedBehindTargetFrames.removeValue(forKey: wid)
-            stackedBehindWindowAnchors = stackedBehindWindowAnchors.filter { $0.value != wid }
             hiddenWindowIDs.remove(wid)
             offscreenMoveGeneration.removeValue(forKey: wid)
             titleCache.removeValue(forKey: wid)
@@ -1027,6 +1114,7 @@ final class WindowOverlayManager {
             missingActiveWindowTicks.removeValue(forKey: wid)
             movingWindowIDs.remove(wid)
             previousTickWindowFrames.removeValue(forKey: wid)
+            windowMovementStableSince.removeValue(forKey: wid)
         }
     }
 
@@ -1072,7 +1160,7 @@ final class WindowOverlayManager {
                 continue
             }
 
-            updateHostingView(gid: change.groupID, group: group)
+            updateTabBarView(gid: change.groupID, group: group)
 
             guard let removedActiveWindowID = change.removedActiveWindowID else { continue }
             let targetAXFrame = lastKnownAXWindowFrames[removedActiveWindowID]
@@ -1138,7 +1226,7 @@ final class WindowOverlayManager {
         overlays.removeValue(forKey: gid)
         lastFrames.removeValue(forKey: gid)
         lastWindowFrames.removeValue(forKey: gid)
-        hostingViews.removeValue(forKey: gid)
+        tabBarViews.removeValue(forKey: gid)
     }
 
     private func refreshGroupsAfterDetach(
@@ -1149,7 +1237,7 @@ final class WindowOverlayManager {
         restoredFrame: NSRect
     ) {
         if let oldGroup {
-            updateHostingView(gid: oldGroupID, group: oldGroup)
+            updateTabBarView(gid: oldGroupID, group: oldGroup)
             if let frame = cgFrame(wid: oldGroup.activeWindowID) ?? lastWindowFrames[oldGroupID] {
                 lastWindowFrames[oldGroupID] = frame
             }
@@ -1158,7 +1246,7 @@ final class WindowOverlayManager {
         }
 
         lastWindowFrames[newGroupID] = restoredFrame
-        updateHostingView(gid: newGroupID, group: newGroup)
+        updateTabBarView(gid: newGroupID, group: newGroup)
     }
 
     // MARK: - Model
@@ -1174,17 +1262,12 @@ final class WindowOverlayManager {
         )
     }
 
-    private func updateHostingView(gid: UUID, group: WindowGroup) {
-        guard let hv = hostingViews[gid] else { return }
+    private func updateTabBarView(gid: UUID, group: WindowGroup) {
+        guard let tabBar = tabBarViews[gid] else { return }
         let model = makeModel(gid: gid, group: group)
-        hv.rootView = AnyView(
-            TabBarView(model: model,
-                       onActivate: { [weak self] wid in self?.handleActivate(wid: wid, gid: gid) },
-                       onDrop: { [weak self] srcWID, targetGID in _ = self?.handleDrop(srcWID: srcWID, targetGID: targetGID) },
-                       onDragEndedOutsideTabBar: { [weak self] srcWID, point in self?.handleDragEndedOutsideTabBar(srcWID: srcWID, screenPoint: point) },
-                       onDragMoved: { [weak self] srcWID, point in self?.handleDragMoved(srcWID: srcWID, screenPoint: point) },
-                       onDragFinished: { [weak self] _ in self?.clearDragState() })
-        )
+        if tabBar.model != model {
+            tabBar.model = model
+        }
     }
 
     private func labelFrame(for winFrame: NSRect, group: WindowGroup) -> NSRect {
@@ -1252,19 +1335,16 @@ final class WindowOverlayManager {
         panel.appearance = AppSettings.resolvedNSAppearance()
 
         let model = makeModel(gid: gid, group: group)
-        let rootView = AnyView(
-            TabBarView(
-                model: model,
-                onActivate: { [weak self] wid in self?.handleActivate(wid: wid, gid: gid) },
-                onDrop: { [weak self] srcWID, targetGID in _ = self?.handleDrop(srcWID: srcWID, targetGID: targetGID) },
-                onDragEndedOutsideTabBar: { [weak self] srcWID, point in self?.handleDragEndedOutsideTabBar(srcWID: srcWID, screenPoint: point) },
-                onDragMoved: { [weak self] srcWID, point in self?.handleDragMoved(srcWID: srcWID, screenPoint: point) },
-                onDragFinished: { [weak self] _ in self?.clearDragState() }
-            )
-        )
-        let hv = NSHostingView(rootView: rootView)
-        panel.contentView = hv
-        hostingViews[gid] = hv
+        let tabBar = TabBarNSView(model: model)
+        tabBar.frame = NSRect(origin: .zero, size: frame.size)
+        tabBar.autoresizingMask = [.width, .height]
+        tabBar.onActivate = { [weak self] wid in self?.handleActivate(wid: wid, gid: gid) }
+        tabBar.onDrop = { [weak self] srcWID, targetGID in _ = self?.handleDrop(srcWID: srcWID, targetGID: targetGID) }
+        tabBar.onDragEndedOutsideTabBar = { [weak self] srcWID, point in self?.handleDragEndedOutsideTabBar(srcWID: srcWID, screenPoint: point) }
+        tabBar.onDragMoved = { [weak self] srcWID, point in self?.handleDragMoved(srcWID: srcWID, screenPoint: point) }
+        tabBar.onDragFinished = { [weak self] _ in self?.clearDragState() }
+        panel.contentView = tabBar
+        tabBarViews[gid] = tabBar
 
         placeOverlay(panel, above: activeWID)
         return panel
@@ -1512,8 +1592,8 @@ final class WindowOverlayManager {
         restoreWindow(oldGroup.activeWindowID)
         activateFrontmostWindow(srcWID)
 
-        updateHostingView(gid: result.oldGroupID, group: oldGroup)
-        updateHostingView(gid: result.newGroupID, group: newGroup)
+        updateTabBarView(gid: result.oldGroupID, group: oldGroup)
+        updateTabBarView(gid: result.newGroupID, group: newGroup)
     }
 
     private func detachedWindowFrame(for wid: CGWindowID, at screenPoint: NSPoint, fallback: NSRect?) -> NSRect {
@@ -1546,8 +1626,10 @@ final class WindowOverlayManager {
     }
 
     /// Dock / 状态栏 / Cmd-Tab 等外部方式激活窗口时，同步组内 active 标签
-    private func observeExternalWindowFocus() {
+    private func observeExternalWindowFocus(now: Date = Date()) {
         guard activeDragWindowID == nil, pendingDetachWindowID == nil else { return }
+        guard now.timeIntervalSince(lastFocusCheckAt) >= focusCheckInterval else { return }
+        lastFocusCheckAt = now
         guard let focusedWID = focusedWindowID() else { return }
         guard focusedWID != lastObservedFocusedWindowID else { return }
         lastObservedFocusedWindowID = focusedWID
@@ -1593,6 +1675,7 @@ final class WindowOverlayManager {
     private func completeGroupSwitch(for gid: UUID, generation: UInt64) {
         guard groupSwitchGeneration[gid] == generation else { return }
         isGroupSwitchInProgress = false
+        suppressMovementDetectionForGroup(gid)
         guard let pending = pendingGroupSwitch else { return }
         pendingGroupSwitch = nil
         guard GroupStore.shared.groups[pending.gid]?.windowIDs.contains(pending.wid) == true else { return }
@@ -1602,6 +1685,7 @@ final class WindowOverlayManager {
     private func performGroupSwitch(wid: CGWindowID, gid: UUID) {
         guard let currentGroup = GroupStore.shared.groups[gid] else { return }
         isGroupSwitchInProgress = true
+        suppressMovementDetectionForGroup(gid)
         let switchGeneration = groupSwitchGeneration[gid, default: 0] &+ 1
         groupSwitchGeneration[gid] = switchGeneration
         let finishGroupSwitch = { [weak self] in
@@ -1619,20 +1703,12 @@ final class WindowOverlayManager {
             finishGroupSwitch()
             return
         }
-        updateHostingView(gid: gid, group: group)
+        updateTabBarView(gid: gid, group: group)
         let prevWIDs = group.windowIDs.filter { $0 != wid }
-        let slotBasedSwitch = hideMode != .stackBehind && hideMode != .transparent
+        let slotBasedSwitch = hideMode != .transparent
 
         if hideMode == .transparent {
             WindowAlphaController.shared.setAlpha(0, for: wid)
-        }
-        if hideMode == .stackBehind {
-            stackedBehindWindowAnchors.removeValue(forKey: wid)
-            stackedBehindTargetFrames.removeValue(forKey: wid)
-            hiddenOriginalAXFrames.removeValue(forKey: wid)
-            hiddenWindowIDs.remove(wid)
-            WindowAlphaController.shared.setAlpha(1, for: wid)
-            WindowTransformController.shared.resetTransform(for: wid)
         } else if slotBasedSwitch {
             if let targetAXFrame {
                 revealIncomingWindowForSwitch(wid: wid, slotFrame: targetAXFrame)
@@ -1651,22 +1727,13 @@ final class WindowOverlayManager {
                 guard let self else { return }
                 guard self.groupSwitchGeneration[gid] == switchGeneration else { return }
                 self.activateFrontmostWindow(wid)
-                if hideMode == .stackBehind {
-                    self.hideWindowsForSwitch(prevWIDs)
-                }
                 finishGroupSwitch()
             }
 
-            if hideMode == .stackBehind {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.06, execute: finishSwitch)
-            } else {
-                finishSwitch()
-            }
+            finishSwitch()
         } else {
             activateFrontmostWindow(wid)
-            if hideMode == .stackBehind {
-                hideWindowsForSwitch(prevWIDs)
-            } else if slotBasedSwitch == false {
+            if slotBasedSwitch == false {
                 hideWindowsForSwitch(prevWIDs)
             }
             finishGroupSwitch()
@@ -1757,6 +1824,9 @@ final class WindowOverlayManager {
         guard let pid = windowPID(wid),
               let sourceGID = GroupStore.shared.groupID(for: wid) else { return }
 
+        let bundleIdentifier = NSRunningApplication(processIdentifier: pid)?.bundleIdentifier
+        guard AppSettings.shouldAutoGroup(bundleIdentifier: bundleIdentifier) else { return }
+
         var bestTarget: (windowID: CGWindowID, groupID: UUID, groupSize: Int)?
 
         for (existingWID, existingGID) in GroupStore.shared.windowToGroup where existingWID != wid {
@@ -1823,14 +1893,6 @@ final class WindowOverlayManager {
 
         if AppSettings.hideMode == .transparent {
             WindowAlphaController.shared.setAlpha(0, for: sourceWID)
-        }
-        if AppSettings.hideMode == .stackBehind {
-            stackedBehindWindowAnchors.removeValue(forKey: sourceWID)
-            stackedBehindTargetFrames.removeValue(forKey: sourceWID)
-            hiddenOriginalAXFrames.removeValue(forKey: sourceWID)
-            hiddenWindowIDs.remove(sourceWID)
-            WindowAlphaController.shared.setAlpha(1, for: sourceWID)
-            WindowTransformController.shared.resetTransform(for: sourceWID)
         } else {
             if let targetSlotAXFrame {
                 revealIncomingWindowForSwitch(wid: sourceWID, slotFrame: targetSlotAXFrame)
@@ -1841,13 +1903,7 @@ final class WindowOverlayManager {
             hideWindowsForSwitch(mergedGroup.windowIDs.filter { $0 != sourceWID })
         }
 
-        if AppSettings.hideMode == .stackBehind {
-            for wid in mergedGroup.windowIDs where wid != sourceWID {
-                minimizeWindow(wid)
-            }
-        }
-
-        updateHostingView(gid: mergedGID, group: GroupStore.shared.groups[mergedGID] ?? mergedGroup)
+        updateTabBarView(gid: mergedGID, group: GroupStore.shared.groups[mergedGID] ?? mergedGroup)
         return true
     }
 
@@ -1935,16 +1991,14 @@ final class WindowOverlayManager {
     }
 
     private func frontmostWindowID(for pid: pid_t) -> CGWindowID? {
-        guard let list = CGWindowListCopyWindowInfo(
-            [.optionOnScreenOnly, .excludeDesktopElements],
-            kCGNullWindowID
-        ) as? [[String: Any]] else { return nil }
+        guard let list = allWindowList(forceRefresh: false) else { return nil }
 
         let stageManagerBlockingOverlayBounds = stageManagerBlockingOverlayBounds(in: list)
         for info in list {
             guard isOwnProcessWindow(info) == false else { continue }
             guard isIgnoredSystemWindow(info) == false else { continue }
             guard isStageManagerThumbnail(info, matching: stageManagerBlockingOverlayBounds) == false else { continue }
+            guard windowListEntryIsOnScreen(info) else { continue }
             guard (info[kCGWindowOwnerPID as String] as? pid_t) == pid else { continue }
             guard let wid = info[kCGWindowNumber as String] as? CGWindowID else { continue }
             return wid
@@ -1962,7 +2016,7 @@ final class WindowOverlayManager {
 
     private func windowPID(_ wid: CGWindowID) -> pid_t? {
         if let pid = windowPIDCache[wid] ?? lastKnownWindowPIDs[wid], pid != ownProcessID { return pid }
-        guard let list = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]] else { return nil }
+        guard let list = allWindowList(forceRefresh: false) else { return nil }
         for info in list {
             guard isOwnProcessWindow(info) == false else { continue }
             guard isIgnoredSystemWindow(info) == false else { continue }
@@ -2063,46 +2117,6 @@ final class WindowOverlayManager {
         NSRect(x: frame.minX, y: frame.minY, width: 1, height: 1)
     }
 
-    private func syncStackedBehindWindows(in group: WindowGroup, activeFrame: NSRect) {
-        guard AppSettings.hideMode == .stackBehind else { return }
-        let activeWID = group.activeWindowID
-        let targetFrame = stackedBehindFrame(fromActiveCGFrame: activeFrame)
-
-        for wid in group.windowIDs where wid != activeWID && hiddenWindowIDs.contains(wid) {
-            stackWindow(wid, behind: activeWID, matching: targetFrame)
-        }
-    }
-
-    private func stackedBehindFrame(fromActiveCGFrame frame: NSRect) -> (actualAXFrame: NSRect, visualCGFrame: NSRect) {
-        let scale: CGFloat = 0.9
-        let visualWidth = frame.width * scale
-        let visualHeight = frame.height * scale
-        let visualFrame = NSRect(
-            x: frame.midX - visualWidth / 2,
-            y: frame.midY - visualHeight / 2,
-            width: visualWidth,
-            height: visualHeight
-        )
-        return (axStyleFrame(fromCGFrame: visualFrame), visualFrame)
-    }
-
-    @discardableResult
-    private func stackWindow(
-        _ wid: CGWindowID,
-        behind activeWID: CGWindowID,
-        matching targetFrame: (actualAXFrame: NSRect, visualCGFrame: NSRect)
-    ) -> Bool {
-        WindowAlphaController.shared.setAlpha(1, for: wid)
-        setWindowFrame(wid: wid, frame: targetFrame.actualAXFrame)
-        let actualCGFrame = axFrame(wid: wid).map(cgStyleFrame(fromAXFrame:)) ?? cgStyleFrame(fromAXFrame: targetFrame.actualAXFrame)
-        WindowTransformController.shared.setVisualFrame(targetFrame.visualCGFrame, for: wid, actualFrame: actualCGFrame)
-        stackedBehindWindowAnchors[wid] = activeWID
-        stackedBehindTargetFrames[wid] = targetFrame.actualAXFrame
-        lastKnownAXWindowFrames[wid] = targetFrame.actualAXFrame
-        lastKnownWindowFrames[wid] = targetFrame.visualCGFrame
-        return WindowOrderController.shared.orderWindow(wid, below: activeWID)
-    }
-
     private func setWindowFrame(wid: CGWindowID, frame: NSRect) {
         setWindowSize(wid: wid, size: frame.size)
         setWindowPosition(wid: wid, origin: frame.origin)
@@ -2138,8 +2152,6 @@ final class WindowOverlayManager {
     @discardableResult
     private func revealIncomingWindowForSwitch(wid: CGWindowID, slotFrame: NSRect) -> Bool {
         invalidateOffscreenMove(for: wid)
-        stackedBehindWindowAnchors.removeValue(forKey: wid)
-        stackedBehindTargetFrames.removeValue(forKey: wid)
 
         let needsSpaceRestore = hiddenOriginalSpaceIDs[wid] != nil
         let spaceRestored = restoreWindowToCurrentSpaceIfNeeded(wid)
@@ -2297,16 +2309,6 @@ final class WindowOverlayManager {
             moveWindowFullyOffscreen(wid, from: frame)
             hiddenWindowIDs.insert(wid)
             return true
-        case .stackBehind:
-            _ = rememberOriginalFrameIfNeeded(for: wid)
-            guard let groupInfo = GroupStore.shared.group(for: wid),
-                  groupInfo.group.activeWindowID != wid,
-                  let activeFrame = axFrame(wid: groupInfo.group.activeWindowID).map(cgStyleFrame(fromAXFrame:))
-                    ?? cgFrame(wid: groupInfo.group.activeWindowID)
-                    ?? lastWindowFrames[groupInfo.id] else { return false }
-            let targetFrame = stackedBehindFrame(fromActiveCGFrame: activeFrame)
-            hiddenWindowIDs.insert(wid)
-            return stackWindow(wid, behind: groupInfo.group.activeWindowID, matching: targetFrame)
         case .minimize:
             guard let pid = windowPID(wid),
                   let win = axWindow(pid: pid, wid: wid) else { return false }
@@ -2337,8 +2339,6 @@ final class WindowOverlayManager {
     private func restoreWindow(_ wid: CGWindowID, toSlotFrame slotFrame: NSRect? = nil) -> Bool {
         invalidateOffscreenMove(for: wid)
         let needsSpaceRestore = hiddenOriginalSpaceIDs[wid] != nil
-        let wasStackedBehind = stackedBehindWindowAnchors.removeValue(forKey: wid) != nil
-        stackedBehindTargetFrames.removeValue(forKey: wid)
         let deferAlphaRestore = shouldDeferAlphaOnSlotRestore(for: wid, slotFrame: slotFrame)
         if deferAlphaRestore {
             WindowAlphaController.shared.setAlpha(0, for: wid)
@@ -2369,7 +2369,7 @@ final class WindowOverlayManager {
         }
 
         let deferredAlphaRestored = deferAlphaRestore && WindowAlphaController.shared.setAlpha(1, for: wid)
-        guard alphaRestored || deferredAlphaRestored || transformRestored || spaceRestored || minimizedRestored || frameRestored || wasStackedBehind else { return false }
+        guard alphaRestored || deferredAlphaRestored || transformRestored || spaceRestored || minimizedRestored || frameRestored else { return false }
         hiddenWindowIDs.remove(wid)
         return true
     }
@@ -2394,11 +2394,11 @@ final class WindowOverlayManager {
     }
 
     private func windowID(at screenPoint: NSPoint, excluding excluded: Set<CGWindowID>) -> CGWindowID? {
-        guard let list = CGWindowListCopyWindowInfo(
-            [.optionOnScreenOnly, .excludeDesktopElements],
-            kCGNullWindowID
-        ) as? [[String: Any]],
-              let screenHeight = NSScreen.screens.first?.frame.height else { return nil }
+        let screenHeight = cachedScreenHeight > 0
+            ? cachedScreenHeight
+            : (NSScreen.screens.first?.frame.height ?? 0)
+        guard let list = allWindowList(forceRefresh: false),
+              screenHeight > 0 else { return nil }
 
         let stageManagerBlockingOverlayBounds = stageManagerBlockingOverlayBounds(in: list)
 
@@ -2406,6 +2406,7 @@ final class WindowOverlayManager {
             guard let layer = info[kCGWindowLayer as String] as? Int, layer == 0 else { continue }
             guard isOwnProcessWindow(info) == false else { continue }
             guard isIgnoredSystemWindow(info) == false else { continue }
+            guard windowListEntryIsOnScreen(info) else { continue }
             guard isStageManagerThumbnail(info, matching: stageManagerBlockingOverlayBounds) == false else { continue }
             guard let wid = info[kCGWindowNumber as String] as? CGWindowID else { continue }
             guard let bounds = info[kCGWindowBounds as String] as? [String: CGFloat] else { continue }
@@ -2413,7 +2414,7 @@ final class WindowOverlayManager {
             let width = bounds["Width"] ?? 0
             let height = bounds["Height"] ?? 0
             guard width >= minLabelWindowWidth && height >= minLabelWindowHeight else { continue }
-            guard isWindowMinimized(wid) == false else { continue }
+            guard isWindowMinimizedCached(wid) == false else { continue }
 
             let x = bounds["X"] ?? 0
             let y = bounds["Y"] ?? 0
@@ -2429,26 +2430,27 @@ final class WindowOverlayManager {
     }
 
     private func isWindowOnScreen(_ wid: CGWindowID) -> Bool {
-        guard let list = CGWindowListCopyWindowInfo(
-            [.optionOnScreenOnly, .excludeDesktopElements],
-            kCGNullWindowID
-        ) as? [[String: Any]] else { return false }
+        guard let list = allWindowList(forceRefresh: false) else { return false }
 
         let stageManagerBlockingOverlayBounds = stageManagerBlockingOverlayBounds(in: list)
 
         return list.contains { info in
             guard isOwnProcessWindow(info) == false else { return false }
             guard isIgnoredSystemWindow(info) == false else { return false }
+            guard windowListEntryIsOnScreen(info) else { return false }
             guard isStageManagerThumbnail(info, matching: stageManagerBlockingOverlayBounds) == false else { return false }
             guard let windowID = info[kCGWindowNumber as String] as? CGWindowID else { return false }
             guard windowID == wid else { return false }
-            return isWindowMinimized(wid) == false
+            return isWindowMinimizedCached(wid) == false
         }
     }
 
     private func cgFrame(wid: CGWindowID) -> NSRect? {
-        guard let list = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]],
-              let screenHeight = NSScreen.screens.first?.frame.height else { return lastKnownWindowFrames[wid] }
+        let screenHeight = cachedScreenHeight > 0
+            ? cachedScreenHeight
+            : (NSScreen.screens.first?.frame.height ?? 0)
+        guard let list = allWindowList(forceRefresh: false),
+              screenHeight > 0 else { return lastKnownWindowFrames[wid] }
         for info in list {
             guard isOwnProcessWindow(info) == false else { continue }
             guard isIgnoredSystemWindow(info) == false else { continue }
@@ -2463,12 +2465,5 @@ final class WindowOverlayManager {
             return frame
         }
         return lastKnownWindowFrames[wid]
-    }
-
-    private func framesMatch(_ a: NSRect, _ b: NSRect) -> Bool {
-        abs(a.origin.x - b.origin.x) < 4 &&
-        abs(a.origin.y - b.origin.y) < 4 &&
-        abs(a.width - b.width) < 4 &&
-        abs(a.height - b.height) < 4
     }
 }

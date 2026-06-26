@@ -113,10 +113,9 @@ export const zh: Translations = {
     modes: [
       { name: '最小化', description: '兼容性最好，切换时会有最小化 / 恢复痕迹。', tag: '稳定', decor: '01' },
       { name: '透明隐藏', description: '更无痕，不进入 Dock 最小化区。', tag: '推荐', decor: '02' },
-      { name: '底层跟随', description: '非当前窗口缩小并叠在当前窗口底层。', tag: '视觉', decor: '03' },
-      { name: '移动到屏外', description: '非当前窗口临时移到屏幕外。', tag: '经典', decor: '04' },
-      { name: '移动到其他桌面', description: '临时移到另一个 Space，需至少两个普通桌面。', tag: 'Space', decor: '05' },
-      { name: '缩到极小', description: '非当前窗口缩到极小尺寸，切换时再恢复。', tag: '轻量', decor: '06' },
+      { name: '移动到屏外', description: '非当前窗口临时移到屏幕外。', tag: '经典', decor: '03' },
+      { name: '移动到其他桌面', description: '临时移到另一个 Space，需至少两个普通桌面。', tag: 'Space', decor: '04' },
+      { name: '缩到极小', description: '非当前窗口缩到极小尺寸，切换时再恢复。', tag: '轻量', decor: '05' },
     ],
     permission:
       '首次运行需在「系统设置 → 隐私与安全性 → 辅助功能」中授权 Origami，以便控制窗口位置与状态。',

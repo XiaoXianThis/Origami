@@ -30,7 +30,7 @@ struct TabDragPayload {
 
 // MARK: - 数据模型（传给 View）
 
-struct TabBarModel {
+struct TabBarModel: Equatable {
     var groupID: UUID
     var windowIDs: [CGWindowID]
     var activeIndex: Int
@@ -99,7 +99,16 @@ struct TabBarLayout {
 // MARK: - NSView 实现（支持跨 panel 拖拽）
 
 final class TabBarNSView: NSView {
-    var model: TabBarModel { didSet { needsDisplay = true; rebuildTrackingAreas() } }
+    var model: TabBarModel {
+        didSet {
+            if oldValue.windowIDs != model.windowIDs {
+                rebuildTrackingAreas()
+            }
+            if oldValue != model {
+                needsDisplay = true
+            }
+        }
+    }
 
     /// 当用户点击某个标签时的回调
     var onActivate: ((CGWindowID) -> Void)?
@@ -118,10 +127,13 @@ final class TabBarNSView: NSView {
 
     private var tabRects: [CGWindowID: NSRect] = [:]
     private var myTrackingAreas: [NSTrackingArea] = []
+    private var cachedColors: (isDark: Bool, colors: TabBarColors)?
 
     init(model: TabBarModel) {
         self.model = model
         super.init(frame: .zero)
+        wantsLayer = true
+        layer?.isOpaque = false
         registerForDraggedTypes([tabDragType])
     }
 
@@ -129,7 +141,16 @@ final class TabBarNSView: NSView {
 
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
+        cachedColors = nil
         needsDisplay = true
+    }
+
+    private func currentColors() -> TabBarColors {
+        let isDark = AppSettings.isDarkMode(for: effectiveAppearance)
+        if let cached = cachedColors, cached.isDark == isDark { return cached.colors }
+        let colors = TabBarColors.colors(isDark: isDark)
+        cachedColors = (isDark, colors)
+        return colors
     }
 
     // MARK: - Layout helpers
@@ -156,7 +177,7 @@ final class TabBarNSView: NSView {
             let isActive = wid == model.windowIDs[safe: model.activeIndex]
             let title = model.titles[wid] ?? "窗口"
 
-            let colors = TabBarColors.colors(isDark: AppSettings.isDarkMode(for: effectiveAppearance))
+            let colors = currentColors()
             let bg = isActive ? colors.activeBackground : colors.inactiveBackground
             let path = NSBezierPath(roundedRect: rect.insetBy(dx: 0, dy: 1), xRadius: 7, yRadius: 7)
             bg.setFill()
@@ -318,13 +339,14 @@ struct TabBarView: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: TabBarNSView, context: Context) {
-        nsView.model = model
+        if nsView.model != model {
+            nsView.model = model
+        }
         nsView.onActivate = onActivate
         nsView.onDrop = onDrop
         nsView.onDragEndedOutsideTabBar = onDragEndedOutsideTabBar
         nsView.onDragMoved = onDragMoved
         nsView.onDragFinished = onDragFinished
-        nsView.needsDisplay = true
     }
 }
 

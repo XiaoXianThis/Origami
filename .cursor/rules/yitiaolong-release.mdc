@@ -1,0 +1,54 @@
+---
+description: 触发词「一条龙服务」—— 版本发布与官网部署全流程
+alwaysApply: true
+---
+
+# 一条龙服务
+
+当用户说 **「一条龙服务」**（或明确表示要完整发版）时，按顺序执行以下四步，无需逐步确认（除非版本号未指定且需 bump 策略有歧义）。
+
+## 1. 更新版本号
+
+- 确认目标版本 `X.Y.Z`（用户未指定时，在最新 tag 基础上 patch +1；当前可查 `git tag --sort=-v:refname`）
+- 同步更新官网下载链接版本：
+  - `web/src/components/GettingStarted.astro` → `releaseVersion`
+  - `web/src/components/ProductShowcase.astro` → `releaseVersion`
+- `Resources/Info.plist` 保持 `VERSION_PLACEHOLDER`，由 `scripts/package.sh` 打包时注入，无需改模板
+- 应用内版本来自 Bundle（`AppInfo.swift`），随打包产物自动一致
+
+## 2. 提交并推送
+
+```bash
+git add -A
+git commit -m "chore: release vX.Y.Z"
+git push origin HEAD
+```
+
+遵循仓库既有 commit 风格；仅在用户明确要求时 amend。
+
+## 3. 构建发布新版本
+
+推送 tag 触发 GitHub Actions（`.github/workflows/release.yml`）自动构建 Universal 包并发布到 Releases：
+
+```bash
+git tag vX.Y.Z
+git push origin vX.Y.Z
+```
+
+可选本地验证：`./scripts/package.sh X.Y.Z`（产物在 `dist/`）
+
+## 4. 部署网站
+
+```bash
+cd web
+npm run build
+npx wrangler pages deploy dist --project-name origami
+```
+
+首次或 token 失效时需 `npx wrangler login`。
+
+## 完成检查
+
+- [ ] GitHub Releases 出现 `vX.Y.Z` 及 DMG/ZIP 资产
+- [ ] Cloudflare Pages 部署成功
+- [ ] 官网下载按钮指向新版本

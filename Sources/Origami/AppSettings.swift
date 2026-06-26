@@ -20,7 +20,6 @@ enum AppTheme: String, CaseIterable, Identifiable {
 enum WindowHideMode: String, CaseIterable, Identifiable {
     case minimize
     case transparent
-    case stackBehind
     case moveOffscreen
     case moveToSpace
     case shrink
@@ -31,7 +30,6 @@ enum WindowHideMode: String, CaseIterable, Identifiable {
         switch self {
         case .minimize: "最小化"
         case .transparent: "透明隐藏"
-        case .stackBehind: "底层跟随"
         case .moveOffscreen: "移动到屏外"
         case .moveToSpace: "移动到其他桌面"
         case .shrink: "缩到极小"
@@ -44,8 +42,6 @@ enum WindowHideMode: String, CaseIterable, Identifiable {
             "兼容性最好，但切换时会有最小化/恢复痕迹。"
         case .transparent:
             "更无痕，不进入 Dock 最小化区；不同 macOS 版本和 App 可能存在兼容差异。"
-        case .stackBehind:
-            "把非当前窗口移动到当前窗口底层，缩小到 90% 并居中跟随当前窗口。"
         case .moveOffscreen:
             "把非当前窗口移到屏幕外，切换时再移动回当前窗口位置。"
         case .moveToSpace:
@@ -154,6 +150,89 @@ enum WindowSwitchSizeMode: String, CaseIterable, Identifiable {
     }
 }
 
+enum OverlayTickRate: String, CaseIterable, Identifiable {
+    case rate1 = "1"
+    case rate5 = "5"
+    case rate10 = "10"
+    case rate20 = "20"
+    case rate30 = "30"
+    case rate60 = "60"
+    case rate120 = "120"
+    case rate240 = "240"
+    case adaptive = "adaptive"
+
+    var id: String { rawValue }
+
+    static let selectableCases: [OverlayTickRate] = [
+        .rate1, .rate5, .rate10, .rate20, .rate30, .rate60, .rate120, .rate240, .adaptive
+    ]
+
+    var ticksPerSecond: Int? {
+        switch self {
+        case .rate1: 1
+        case .rate5: 5
+        case .rate10: 10
+        case .rate20: 20
+        case .rate30: 30
+        case .rate60: 60
+        case .rate120: 120
+        case .rate240: 240
+        case .adaptive: nil
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .adaptive: "自适应 (1~60)"
+        default: "\(ticksPerSecond!) tick/s"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .adaptive:
+            "静止时约 1 tick/s，窗口移动、拖拽标签等活跃时升至 60 tick/s。"
+        default:
+            "标签栏跟随与窗口状态检测每秒执行 \(ticksPerSecond!) 次；数值越低越省电，越高越跟手。"
+        }
+    }
+}
+
+enum AutoGroupFilterMode: String, CaseIterable, Identifiable {
+    case all
+    case whitelist
+    case blacklist
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .all: "全部应用"
+        case .whitelist: "白名单"
+        case .blacklist: "黑名单"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .all:
+            "所有应用的新窗口都会尝试自动归组。"
+        case .whitelist:
+            "仅名单中的应用会自动归组，其他应用需手动拖拽归组。"
+        case .blacklist:
+            "名单中的应用不会自动归组，其他应用仍会自动归组。"
+        }
+    }
+
+    var listSectionTitle: String {
+        switch self {
+        case .all: ""
+        case .whitelist: "白名单应用"
+        case .blacklist: "黑名单应用"
+        }
+    }
+}
+
 enum AppSettings {
     static let themeKey = "Origami.theme"
     static let hideModeKey = "Origami.hideMode"
@@ -169,9 +248,12 @@ enum AppSettings {
     static let restoreOnLaunchKey = "Origami.restoreOnLaunch"
     static let restoreOnExitKey = "Origami.restoreOnExit"
     static let autoGroupSameAppWindowsKey = "Origami.autoGroupSameAppWindows"
+    static let autoGroupFilterModeKey = "Origami.autoGroupFilterMode"
+    static let autoGroupAppBundleIDsKey = "Origami.autoGroupAppBundleIDs"
     static let allowCrossAppGroupingKey = "Origami.allowCrossAppGrouping"
     static let tabSwitchShortcutKeyCodeKey = "Origami.tabSwitchShortcutKeyCode"
     static let tabSwitchShortcutModifiersKey = "Origami.tabSwitchShortcutModifiers"
+    static let overlayTickRateKey = "Origami.overlayTickRate"
 
     static let defaultDetachDelay: Double = 2
     static let minDetachDelay: Double = 0
@@ -188,7 +270,9 @@ enum AppSettings {
     static let defaultRestoreOnLaunch = true
     static let defaultRestoreOnExit = true
     static let defaultAutoGroupSameAppWindows = false
+    static let defaultAutoGroupFilterMode = AutoGroupFilterMode.all
     static let defaultAllowCrossAppGrouping = true
+    static let defaultOverlayTickRate = OverlayTickRate.rate60
     static let defaultTabMinWidth: Double = 120
     static let defaultLabelMaxWidth: Double = 120
     static let minLabelOffset: Double = -200
@@ -241,8 +325,12 @@ enum AppSettings {
     }
 
     static func migrateLegacySettingsIfNeeded() {
-        guard UserDefaults.standard.string(forKey: hideModeKey) == "overlaySwitch" else { return }
-        UserDefaults.standard.set(WindowHideMode.moveOffscreen.rawValue, forKey: hideModeKey)
+        if UserDefaults.standard.string(forKey: hideModeKey) == "overlaySwitch" {
+            UserDefaults.standard.set(WindowHideMode.moveOffscreen.rawValue, forKey: hideModeKey)
+        }
+        if UserDefaults.standard.string(forKey: hideModeKey) == "stackBehind" {
+            UserDefaults.standard.set(WindowHideMode.moveOffscreen.rawValue, forKey: hideModeKey)
+        }
     }
 
     static var detachOnDragEnabled: Bool {
@@ -367,6 +455,41 @@ enum AppSettings {
         }
     }
 
+    static var autoGroupFilterMode: AutoGroupFilterMode {
+        get {
+            let rawValue = UserDefaults.standard.string(forKey: autoGroupFilterModeKey) ?? defaultAutoGroupFilterMode.rawValue
+            return AutoGroupFilterMode(rawValue: rawValue) ?? defaultAutoGroupFilterMode
+        }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: autoGroupFilterModeKey)
+        }
+    }
+
+    static var autoGroupAppBundleIDs: [String] {
+        get {
+            UserDefaults.standard.stringArray(forKey: autoGroupAppBundleIDsKey) ?? []
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: autoGroupAppBundleIDsKey)
+        }
+    }
+
+    /// 根据名单模式判断某应用是否应参与同应用自动归组。
+    static func shouldAutoGroup(bundleIdentifier: String?) -> Bool {
+        guard autoGroupSameAppWindows else { return false }
+
+        switch autoGroupFilterMode {
+        case .all:
+            return true
+        case .whitelist:
+            guard let bundleIdentifier, bundleIdentifier.isEmpty == false else { return false }
+            return autoGroupAppBundleIDs.contains(bundleIdentifier)
+        case .blacklist:
+            guard let bundleIdentifier, bundleIdentifier.isEmpty == false else { return true }
+            return autoGroupAppBundleIDs.contains(bundleIdentifier) == false
+        }
+    }
+
     static var allowCrossAppGrouping: Bool {
         get {
             guard UserDefaults.standard.object(forKey: allowCrossAppGroupingKey) != nil else {
@@ -376,6 +499,16 @@ enum AppSettings {
         }
         set {
             UserDefaults.standard.set(newValue, forKey: allowCrossAppGroupingKey)
+        }
+    }
+
+    static var overlayTickRate: OverlayTickRate {
+        get {
+            let rawValue = UserDefaults.standard.string(forKey: overlayTickRateKey) ?? defaultOverlayTickRate.rawValue
+            return OverlayTickRate(rawValue: rawValue) ?? defaultOverlayTickRate
+        }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: overlayTickRateKey)
         }
     }
 
