@@ -31,9 +31,9 @@ const usageSteps = [
 ];
 ---
 
-<section id="download" class="border-t border-sky-200/50 px-6 py-24">
-  <div class="mx-auto max-w-6xl">
-    <div class="grid gap-12 lg:grid-cols-2">
+<section id="download" class="border-t border-sky-200/50 px-4 py-24 sm:px-6">
+  <div class="mx-auto max-w-6xl min-w-0">
+    <div class="grid min-w-0 gap-12 lg:grid-cols-2">
       <div>
         <p class="section-label">Download</p>
         <h2 class="mt-3 text-3xl font-semibold tracking-tight text-slate-900 md:text-4xl">下载即用</h2>
@@ -83,9 +83,9 @@ const usageSteps = [
   </div>
 </section>
 
-<section id="getting-started" class="border-t border-sky-200/50 px-6 py-24">
-  <div class="mx-auto max-w-6xl">
-    <div class="grid gap-12 lg:grid-cols-2">
+<section id="getting-started" class="border-t border-sky-200/50 px-4 py-24 sm:px-6">
+  <div class="mx-auto max-w-6xl min-w-0">
+    <div class="grid min-w-0 gap-12 lg:grid-cols-2">
       <div>
         <p class="section-label">Getting Started</p>
         <h2 class="mt-3 text-3xl font-semibold tracking-tight text-slate-900 md:text-4xl">几分钟即可上手</h2>
@@ -105,12 +105,12 @@ const usageSteps = [
         </ol>
       </div>
 
-      <div class="glass-card-strong p-6">
+      <div class="glass-card-strong min-w-0 p-6">
         <div class="mb-4 flex items-center justify-between">
           <span class="text-sm font-medium text-slate-700">从源码构建</span>
           <span class="rounded-full bg-sky-100/80 px-2 py-1 text-xs text-cyan-700">bash</span>
         </div>
-        <pre class="overflow-x-auto rounded-2xl bg-slate-900/90 p-5 text-sm leading-7 text-sky-100"><code>{`git clone https://github.com/XiaoXianThis/Origami.git
+        <pre class="max-w-full overflow-x-auto rounded-2xl bg-slate-900/90 p-4 text-sm leading-7 text-sky-100 sm:p-5"><code>{`git clone https://github.com/XiaoXianThis/Origami.git
 cd Origami
 ./scripts/package.sh 0.1.0
 open dist/Origami.app`}</code></pre>
@@ -123,8 +123,8 @@ open dist/Origami.app`}</code></pre>
   </div>
 </section>
 
-<section class="border-t border-sky-200/50 px-6 py-20">
-  <div class="mx-auto max-w-4xl rounded-[2rem] border border-cyan-300/40 bg-gradient-to-br from-cyan-100/60 via-white/70 to-blue-100/50 px-8 py-12 text-center shadow-xl shadow-cyan-500/10 backdrop-blur-xl md:px-12">
+<section class="border-t border-sky-200/50 px-4 py-20 sm:px-6">
+  <div class="mx-auto max-w-4xl min-w-0 rounded-[2rem] border border-cyan-300/40 bg-gradient-to-br from-cyan-100/60 via-white/70 to-blue-100/50 px-5 py-12 text-center shadow-xl shadow-cyan-500/10 backdrop-blur-xl sm:px-8 md:px-12">
     <h2 class="text-3xl font-semibold tracking-tight text-slate-900">把散落的窗口，折成整齐的一组</h2>
     <p class="mx-auto mt-4 max-w-2xl text-lg leading-8 text-slate-600">
       Origami 为重度多窗口用户设计——写代码、查资料、对文档，标签一切换，思路不中断。

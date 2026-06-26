@@ -6,7 +6,7 @@ interface Props {
 const { class: className = '' } = Astro.props;
 ---
 
-<span class:list={['origami-pronunciation inline-flex items-center gap-1.5', className]}>
+<span class:list={['origami-pronunciation inline-flex max-w-full flex-wrap items-center justify-center gap-x-1.5 gap-y-1', className]}>
   <span class="font-semibold text-inherit">Origami</span>
   <span class="font-normal text-slate-500">/ˌɔːrɪˈɡɑːmi/</span>
   <button

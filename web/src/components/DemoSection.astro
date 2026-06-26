@@ -23,7 +23,7 @@ const steps = [
 ];
 ---
 
-<section id="demo" class="demo-hide-narrow-portrait scroll-mt-16 overflow-visible px-2 py-16 sm:px-3 md:py-20 lg:px-4">
+<section id="demo" class="demo-hide-narrow-portrait scroll-mt-16 overflow-x-clip px-2 py-16 sm:px-3 md:py-20 lg:px-4">
   <div class="demo-section-shell">
     <div class="demo-section-bg" aria-hidden="true">
       <div class="demo-bg-dots"></div>
@@ -85,14 +85,14 @@ const steps = [
     width: 100%;
     max-width: 92rem;
     margin: 0 auto;
-    overflow: visible;
+    overflow-x: clip;
   }
 
   .demo-section-bg {
     pointer-events: none;
     position: absolute;
     inset: -4rem -3rem;
-    overflow: visible;
+    overflow: hidden;
   }
 
   .demo-bg-dots {
