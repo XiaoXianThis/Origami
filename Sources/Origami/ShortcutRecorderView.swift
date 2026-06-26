@@ -73,6 +73,7 @@ private final class LocalKeyEventMonitor {
     }
 }
 
+@MainActor
 struct ShortcutRecorderView: View {
     @Binding var keyCode: Int
     @Binding var modifiers: Int
