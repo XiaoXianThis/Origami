@@ -83,10 +83,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     @objc func showWindow(_ sender: Any?) {
+        showSettingsWindow()
+    }
+
+    func showSettingsWindow() {
         if window == nil {
             setupWindow()
         }
-        window?.makeKeyAndOrderFront(sender)
+        window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 

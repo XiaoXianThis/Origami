@@ -27,6 +27,8 @@ struct MainView: View {
     @AppStorage(AppSettings.overlayTickRateKey) private var overlayTickRateRawValue = AppSettings.defaultOverlayTickRate.rawValue
 
     @State private var detectedOffscreenWindows: [OffscreenWindowInfo] = []
+    @State private var permissionReport = PermissionProbe.currentReport()
+    @State private var permissionTestRunning = false
 
     private var theme: Binding<AppTheme> {
         Binding(
@@ -125,6 +127,7 @@ struct MainView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     header
+                    permissionsSection
                     themeSection
                     performanceSection
                     hideModeSection
@@ -145,6 +148,10 @@ struct MainView: View {
         .onAppear {
             refreshOffscreenWindows()
             autoGroupAppBundleIDs = AppSettings.autoGroupAppBundleIDs
+            refreshPermissionReport()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            refreshPermissionReport()
         }
         .onChange(of: themeRawValue) { _ in
             AppDelegate.shared?.applyTheme()
@@ -168,6 +175,142 @@ struct MainView: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var permissionsSection: some View {
+        settingsSection(title: "权限检测") {
+            Text("窗口隐藏与标签切换依赖「辅助功能」；全局快捷键额外需要「输入监控」。检测结果以当前正在运行的这份 Origami 为准。")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            VStack(alignment: .leading, spacing: 8) {
+                permissionRow(
+                    title: "辅助功能",
+                    ok: permissionReport.accessibilityTrusted,
+                    detail: permissionReport.accessibilityTrusted ? "已授权" : "未授权"
+                )
+                permissionRow(
+                    title: "读取前台窗口",
+                    ok: permissionReport.canReadFocusedWindow,
+                    detail: permissionReport.canReadFocusedWindow ? "正常" : "失败"
+                )
+                permissionRow(
+                    title: "读取窗口位置",
+                    ok: permissionReport.canReadWindowFrame,
+                    detail: permissionReport.canReadWindowFrame ? "正常" : "失败"
+                )
+                permissionRow(
+                    title: "控制最小化属性",
+                    ok: permissionReport.canToggleMinimizedAttribute,
+                    detail: permissionReport.canToggleMinimizedAttribute ? "正常" : "失败 / 当前 App 不支持"
+                )
+                permissionRow(
+                    title: "输入监控",
+                    ok: permissionReport.inputMonitoringGranted,
+                    detail: permissionReport.inputMonitoringGranted ? "已授权" : "未授权（仅影响全局快捷键）"
+                )
+            }
+
+            if !permissionReport.accessibilityTrusted {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("为什么系统设置里开了，这里仍显示未授权？")
+                        .font(.callout)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.orange)
+                    Text("macOS 认的是「具体那一份带签名的程序」。你勾选的可能是旧的 Origami（旧安装包 / 旧签名），而当前运行的是后来替换进「应用程序」的新版本。列表里勾着也不代表这份进程已被信任。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    ForEach(Array(permissionReport.fixSteps.enumerated()), id: \.offset) { index, step in
+                        Text("\(index + 1). \(step)")
+                            .font(.caption)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.orange.opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            } else if permissionReport.allCriticalOK {
+                Text("关键权限正常。若切换仍无效，多半是当前隐藏方式不被目标 App 支持，可改用「移动到屏外」。")
+                    .font(.caption)
+                    .foregroundStyle(.green)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            ForEach(Array(permissionReport.notes.enumerated()), id: \.offset) { _, note in
+                Text(note)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            HStack(spacing: 10) {
+                Button(permissionTestRunning ? "测试中…" : "测试权限") {
+                    runPermissionTest()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(permissionTestRunning)
+
+                Button("申请辅助功能") {
+                    PermissionProbe.requestAccessibilityPrompt()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                        refreshPermissionReport()
+                    }
+                }
+
+                Button("申请输入监控") {
+                    PermissionProbe.requestInputMonitoringPrompt()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                        refreshPermissionReport()
+                    }
+                }
+            }
+
+            HStack(spacing: 10) {
+                Button("打开辅助功能设置") {
+                    PermissionProbe.openAccessibilitySettings()
+                }
+                Button("打开输入监控设置") {
+                    PermissionProbe.openInputMonitoringSettings()
+                }
+                Button("复制 App 路径") {
+                    PermissionProbe.copyBundlePathToPasteboard()
+                }
+            }
+        }
+    }
+
+    private func permissionRow(title: String, ok: Bool, detail: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: ok ? "checkmark.circle.fill" : "xmark.circle.fill")
+                .foregroundStyle(ok ? .green : .orange)
+            Text(title)
+                .font(.callout)
+                .fontWeight(.medium)
+            Spacer()
+            Text(detail)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func refreshPermissionReport() {
+        permissionReport = PermissionProbe.currentReport()
+    }
+
+    private func runPermissionTest() {
+        permissionTestRunning = true
+        // 先把设置窗口放到后面，便于探测真正的前台 App 窗口
+        NSApp.windows.forEach { $0.orderBack(nil) }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            refreshPermissionReport()
+            permissionTestRunning = false
+            AppDelegate.shared?.showSettingsWindow()
         }
     }
 

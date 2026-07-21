@@ -1189,6 +1189,7 @@ final class WindowOverlayManager {
 
         activateFrontmostWindow(replacementWID)
         hideWindowsForSwitch(group.windowIDs.filter { $0 != replacementWID })
+        raiseWindowWithoutActivatingApp(replacementWID)
 
         for delay in [0.04, 0.12, 0.24] {
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
@@ -1196,12 +1197,14 @@ final class WindowOverlayManager {
                       let currentGroup = GroupStore.shared.groups[groupID],
                       currentGroup.activeWindowID == replacementWID else { return }
 
-                if let resolvedAXFrame {
+                if AppSettings.hideMode == .minimize || AppSettings.hideMode == .transparent {
+                    self.restoreWindow(replacementWID, toSlotFrame: AppSettings.hideMode == .minimize ? resolvedAXFrame : nil)
+                } else if let resolvedAXFrame {
                     self.revealIncomingWindowForSwitch(wid: replacementWID, slotFrame: resolvedAXFrame)
                 } else {
                     self.restoreWindow(replacementWID)
                 }
-                self.activateFrontmostWindow(replacementWID)
+                self.raiseWindowWithoutActivatingApp(replacementWID)
                 self.hideWindowsForSwitch(currentGroup.windowIDs.filter { $0 != replacementWID })
             }
         }
@@ -1407,23 +1410,30 @@ final class WindowOverlayManager {
         scheduleDetachIfNeeded(srcWID: srcWID, groupID: sourceGroup.id, screenPoint: screenPoint)
     }
 
+    /// 是否仍在「源组窗口」上：既要落在几何范围内，也要求该点最前真实窗口属于源组。
+    /// 这样被其它窗口挡住的重叠区不会被误判成源区，从而可以高亮/合并到挡在前面的窗口。
     private func isInsideSourceDragRegion(groupID: UUID, activeWindowID: CGWindowID, screenPoint: NSPoint) -> Bool {
         guard var sourceFrame = cgFrame(wid: activeWindowID) ?? lastWindowFrames[groupID] else { return false }
         if let labelFrame = overlays[groupID]?.frame ?? lastFrames[groupID] {
             sourceFrame = sourceFrame.union(labelFrame.insetBy(dx: -8, dy: -8))
         }
-        return sourceFrame.contains(screenPoint)
+        guard sourceFrame.contains(screenPoint) else { return false }
+
+        guard let frontWID = windowID(at: screenPoint, excluding: []) else {
+            // 没命中其它托管窗口（可能只有标签栏），视为仍在源区
+            return true
+        }
+        return GroupStore.shared.groupID(for: frontWID) == groupID
     }
 
     private func dropTarget(srcWID: CGWindowID,
                             sourceGroupID: UUID,
                             screenPoint: NSPoint) -> (windowID: CGWindowID, groupID: UUID)? {
-        // 前→后命中最前真实窗口；仅穿透标签自身与 Origami chrome / 已折叠窗口
-        guard let targetWID = windowID(at: screenPoint, excluding: [srcWID]) else { return nil }
+        // 严格按前后遮挡：落点最前真实窗口即唯一候选（不再穿透源窗口去捞下层）
+        guard let targetWID = windowID(at: screenPoint, excluding: []) else { return nil }
         guard let targetGID = GroupStore.shared.groupID(for: targetWID),
               targetGID != sourceGroupID,
               canMergeWindows(source: srcWID, target: targetWID) else {
-            // 最前窗口不可合并则按遮挡挡住，不继续往下层找
             return nil
         }
         return (targetWID, targetGID)
@@ -1701,37 +1711,28 @@ final class WindowOverlayManager {
         }
         updateTabBarView(gid: gid, group: group)
         let prevWIDs = group.windowIDs.filter { $0 != wid }
-        let slotBasedSwitch = hideMode != .transparent
 
-        if slotBasedSwitch {
+        // 恢复目标窗口：minimize 不能走 reveal（其中的 setAlpha(0) 会把窗口弄没）
+        switch hideMode {
+        case .minimize, .transparent:
+            restoreWindow(wid, toSlotFrame: hideMode == .minimize ? targetAXFrame : nil)
+        case .moveOffscreen, .moveToSpace, .shrink:
             if let targetAXFrame {
                 revealIncomingWindowForSwitch(wid: wid, slotFrame: targetAXFrame)
             } else {
                 restoreWindow(wid)
             }
-            activateFrontmostWindow(wid)
-            hideWindowsForSwitch(prevWIDs)
-        } else {
-            // transparent：先升起目标，再折叠其余（勿对目标 setAlpha(0)）
-            restoreWindow(wid)
-            activateFrontmostWindow(wid)
-            hideWindowsForSwitch(prevWIDs)
         }
         if let targetAXFrame {
             lastKnownAXWindowFrames[wid] = targetAXFrame
-
-            let finishSwitch = { [weak self] in
-                guard let self else { return }
-                guard self.groupSwitchGeneration[gid] == switchGeneration else { return }
-                self.activateFrontmostWindow(wid)
-                finishGroupSwitch()
-            }
-
-            finishSwitch()
-        } else {
-            activateFrontmostWindow(wid)
-            finishGroupSwitch()
         }
+
+        // 先前置目标，再隐藏其余；隐藏后只用 AX raise 巩固目标，避免 app.activate 把同应用窗口拉回来
+        activateFrontmostWindow(wid)
+        hideWindowsForSwitch(prevWIDs, switchGeneration: switchGeneration)
+        raiseWindowWithoutActivatingApp(wid)
+        finishGroupSwitch()
+
         let targetOverlayFrame = targetAXFrame.map(cgStyleFrame(fromAXFrame:)) ?? currentOverlayFrame
         if let targetOverlayFrame {
             lastWindowFrames[gid] = targetOverlayFrame
@@ -1766,12 +1767,17 @@ final class WindowOverlayManager {
             lastDragScreenPoint = nil
         }
         guard completedDragWindowID != srcWID,
-              let sourceGroup = GroupStore.shared.group(for: srcWID) else { return }
+              let sourceGroup = GroupStore.shared.group(for: srcWID),
+              let highlightedWID = highlightedDropWindowID else {
+            // 未出现过高亮则不合并，避免与高亮显示不一致
+            return
+        }
 
-        let target = dropTarget(srcWID: srcWID,
-                                sourceGroupID: sourceGroup.id,
-                                screenPoint: screenPoint)
-        guard let target else { return }
+        // 松手时仍须命中同一高亮目标，保证「看见高亮 ↔ 实际合并」一致
+        guard let target = dropTarget(srcWID: srcWID,
+                                      sourceGroupID: sourceGroup.id,
+                                      screenPoint: screenPoint),
+              target.windowID == highlightedWID else { return }
 
         _ = handleDrop(srcWID: srcWID, targetGID: target.groupID)
     }
@@ -1883,18 +1889,24 @@ final class WindowOverlayManager {
             lastKnownAXWindowFrames[sourceWID] = targetSlotAXFrame
         }
 
-        if AppSettings.hideMode == .transparent {
-            restoreWindow(sourceWID)
-            activateFrontmostWindow(sourceWID)
-            hideWindowsForSwitch(mergedGroup.windowIDs.filter { $0 != sourceWID })
+        // 先贴位/恢复源窗口并前置，最后再隐藏组内其余窗口
+        if AppSettings.hideMode == .minimize || AppSettings.hideMode == .transparent {
+            restoreWindow(sourceWID, toSlotFrame: AppSettings.hideMode == .minimize ? targetSlotAXFrame : nil)
+        } else if let targetSlotAXFrame {
+            revealIncomingWindowForSwitch(wid: sourceWID, slotFrame: targetSlotAXFrame)
         } else {
-            if let targetSlotAXFrame {
-                revealIncomingWindowForSwitch(wid: sourceWID, slotFrame: targetSlotAXFrame)
-            } else {
-                restoreWindow(sourceWID)
-            }
+            restoreWindow(sourceWID)
+        }
+        if activateSource {
             activateFrontmostWindow(sourceWID)
-            hideWindowsForSwitch(mergedGroup.windowIDs.filter { $0 != sourceWID })
+        }
+        let switchGeneration = groupSwitchGeneration[mergedGID, default: 0]
+        hideWindowsForSwitch(
+            mergedGroup.windowIDs.filter { $0 != sourceWID },
+            switchGeneration: switchGeneration
+        )
+        if activateSource {
+            raiseWindowWithoutActivatingApp(sourceWID)
         }
 
         updateTabBarView(gid: mergedGID, group: GroupStore.shared.groups[mergedGID] ?? mergedGroup)
@@ -2151,7 +2163,10 @@ final class WindowOverlayManager {
         let spaceRestored = restoreWindowToCurrentSpaceIfNeeded(wid)
         guard needsSpaceRestore == false || spaceRestored else { return false }
 
-        WindowAlphaController.shared.setAlpha(0, for: wid)
+        // minimize 模式不要先 setAlpha(0)，否则取消最小化后窗口可能一直透明
+        if AppSettings.hideMode != .minimize {
+            WindowAlphaController.shared.setAlpha(0, for: wid)
+        }
         WindowTransformController.shared.resetTransform(for: wid)
         _ = hiddenOriginalAXFrames.removeValue(forKey: wid)
 
@@ -2168,10 +2183,39 @@ final class WindowOverlayManager {
         return revealed || unminimized
     }
 
-    private func hideWindowsForSwitch(_ windowIDs: [CGWindowID]) {
+    private func hideWindowsForSwitch(_ windowIDs: [CGWindowID], switchGeneration: UInt64? = nil) {
+        guard !windowIDs.isEmpty else { return }
         for wid in windowIDs {
             minimizeWindow(wid)
         }
+        // 部分 App 在 activate 后会异步恢复同应用窗口；用 generation 避免过期补藏误伤新前台
+        let reinforceIDs = windowIDs
+        let generation = switchGeneration
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            for wid in reinforceIDs {
+                if let generation,
+                   let gid = GroupStore.shared.groupID(for: wid),
+                   self.groupSwitchGeneration[gid] != generation {
+                    continue
+                }
+                if let groupInfo = GroupStore.shared.group(for: wid),
+                   groupInfo.group.activeWindowID == wid {
+                    continue
+                }
+                self.minimizeWindow(wid)
+            }
+        }
+    }
+
+    /// 只升起指定窗口，不 activate App，避免同应用其它窗口被系统取消最小化
+    private func raiseWindowWithoutActivatingApp(_ wid: CGWindowID) {
+        WindowAlphaController.shared.setAlpha(1, for: wid)
+        guard let pid = windowPID(wid),
+              let win = axWindow(pid: pid, wid: wid) else { return }
+        _ = AXUIElementSetAttributeValue(win, kAXMinimizedAttribute as CFString, false as CFTypeRef)
+        AXUIElementPerformAction(win, kAXRaiseAction as CFString)
+        hiddenWindowIDs.remove(wid)
     }
 
     private func axWindow(pid: pid_t, wid: CGWindowID) -> AXUIElement? {
@@ -2347,9 +2391,15 @@ final class WindowOverlayManager {
         var minimizedRestored = false
         var frameRestored = false
 
+        // 最小化模式：先取消最小化，再贴位（否则对已最小化窗口设 frame 常无效）
+        if AppSettings.hideMode == .minimize,
+           let pid = windowPID(wid),
+           let win = axWindow(pid: pid, wid: wid) {
+            minimizedRestored = AXUIElementSetAttributeValue(win, kAXMinimizedAttribute as CFString, false as CFTypeRef) == .success
+        }
+
         let cachedFrame = hiddenOriginalAXFrames.removeValue(forKey: wid)
         if let slotFrame {
-            // 组内切换：直接落到当前槽位，避免先闪到过期缓存坐标
             setWindowFrame(wid: wid, frame: slotFrame)
             frameRestored = true
         } else if let cachedFrame {
@@ -2357,7 +2407,8 @@ final class WindowOverlayManager {
             frameRestored = true
         }
 
-        if let pid = windowPID(wid),
+        if minimizedRestored == false,
+           let pid = windowPID(wid),
            let win = axWindow(pid: pid, wid: wid) {
             minimizedRestored = AXUIElementSetAttributeValue(win, kAXMinimizedAttribute as CFString, false as CFTypeRef) == .success
         }
