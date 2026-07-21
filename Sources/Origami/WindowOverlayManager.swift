@@ -1361,7 +1361,9 @@ final class WindowOverlayManager {
             return
         }
 
-        if activeDragWindowID != srcWID {
+        // 仅在切换到另一场进行中的拖拽时重置；active 为 nil 时（合并刚完成）
+        // 若误清 completedDragWindowID，后续 moved 可能再次 showDropHighlight。
+        if let active = activeDragWindowID, active != srcWID {
             completedDragWindowID = nil
         }
         activeDragWindowID = srcWID
@@ -1383,7 +1385,6 @@ final class WindowOverlayManager {
 
         if let target = dropTarget(srcWID: srcWID,
                                    sourceGroupID: sourceGroup.id,
-                                   sourceActiveWID: sourceGroup.group.activeWindowID,
                                    screenPoint: screenPoint),
            let targetFrame = cgFrame(wid: target.windowID) ?? lastKnownWindowFrames[target.windowID] {
             cancelPendingDetach()
@@ -1416,34 +1417,16 @@ final class WindowOverlayManager {
 
     private func dropTarget(srcWID: CGWindowID,
                             sourceGroupID: UUID,
-                            sourceActiveWID: CGWindowID,
                             screenPoint: NSPoint) -> (windowID: CGWindowID, groupID: UUID)? {
-        let blockingWindowIDs = Set([srcWID, sourceActiveWID])
-        if let targetWID = windowID(at: screenPoint, excluding: blockingWindowIDs),
-           let targetGID = GroupStore.shared.groupID(for: targetWID),
-           targetGID != sourceGroupID,
-           canMergeWindows(source: srcWID, target: targetWID) {
-            return (targetWID, targetGID)
-        }
-
-        if let highlightedDropWindowID,
-           let targetGID = GroupStore.shared.groupID(for: highlightedDropWindowID),
-           targetGID != sourceGroupID,
-           canMergeWindows(source: srcWID, target: highlightedDropWindowID),
-           let frame = cgFrame(wid: highlightedDropWindowID) ?? lastDropHighlightFrame,
-           frame.contains(screenPoint) {
-            return (highlightedDropWindowID, targetGID)
-        }
-
-        return nil
-    }
-
-    private func highlightedDropTarget(sourceGroupID: UUID, sourceWID: CGWindowID) -> (windowID: CGWindowID, groupID: UUID)? {
-        guard let highlightedDropWindowID,
-              let targetGID = GroupStore.shared.groupID(for: highlightedDropWindowID),
+        // 前→后命中最前真实窗口；仅穿透标签自身与 Origami chrome / 已折叠窗口
+        guard let targetWID = windowID(at: screenPoint, excluding: [srcWID]) else { return nil }
+        guard let targetGID = GroupStore.shared.groupID(for: targetWID),
               targetGID != sourceGroupID,
-              canMergeWindows(source: sourceWID, target: highlightedDropWindowID) else { return nil }
-        return (highlightedDropWindowID, targetGID)
+              canMergeWindows(source: srcWID, target: targetWID) else {
+            // 最前窗口不可合并则按遮挡挡住，不继续往下层找
+            return nil
+        }
+        return (targetWID, targetGID)
     }
 
     private func showDropHighlight(windowID: CGWindowID, frame: NSRect) {
@@ -1453,6 +1436,8 @@ final class WindowOverlayManager {
         }
 
         if let panel = dropHighlightPanel {
+            panel.alphaValue = 1
+            panel.ignoresMouseEvents = false
             if highlightedDropWindowID != windowID || lastDropHighlightFrame != frame {
                 panel.setFrame(frame, display: true)
                 panel.contentView?.frame = NSRect(origin: .zero, size: frame.size)
@@ -1482,6 +1467,7 @@ final class WindowOverlayManager {
         panel.backgroundColor = .clear
         panel.isOpaque = false
         panel.hasShadow = false
+        panel.alphaValue = 1
         panel.ignoresMouseEvents = false
         panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
         let highlightView = WindowDropHighlightView(frame: NSRect(origin: .zero, size: frame.size))
@@ -1497,10 +1483,21 @@ final class WindowOverlayManager {
     }
 
     private func clearDropHighlight() {
-        dropHighlightPanel?.orderOut(nil)
-        dropHighlightPanel = nil
         highlightedDropWindowID = nil
         lastDropHighlightFrame = nil
+        guard let panel = dropHighlightPanel else { return }
+        dropHighlightPanel = nil
+        // 立刻禁用命中并关掉，避免残留 panel 挡住标签栏导致无法切换
+        panel.ignoresMouseEvents = true
+        panel.alphaValue = 0
+        panel.orderOut(nil)
+        panel.close()
+        // performDragOperation 期间 orderOut/close 可能被忽略，下一拍再清一次
+        DispatchQueue.main.async {
+            panel.ignoresMouseEvents = true
+            panel.orderOut(nil)
+            panel.close()
+        }
     }
 
     private func clearDragState() {
@@ -1561,7 +1558,6 @@ final class WindowOverlayManager {
                                        screenPoint: screenPoint) == false,
               dropTarget(srcWID: srcWID,
                          sourceGroupID: groupID,
-                         sourceActiveWID: sourceGroup.group.activeWindowID,
                          screenPoint: screenPoint) == nil else {
             cancelPendingDetach()
             return
@@ -1707,9 +1703,7 @@ final class WindowOverlayManager {
         let prevWIDs = group.windowIDs.filter { $0 != wid }
         let slotBasedSwitch = hideMode != .transparent
 
-        if hideMode == .transparent {
-            WindowAlphaController.shared.setAlpha(0, for: wid)
-        } else if slotBasedSwitch {
+        if slotBasedSwitch {
             if let targetAXFrame {
                 revealIncomingWindowForSwitch(wid: wid, slotFrame: targetAXFrame)
             } else {
@@ -1718,7 +1712,10 @@ final class WindowOverlayManager {
             activateFrontmostWindow(wid)
             hideWindowsForSwitch(prevWIDs)
         } else {
+            // transparent：先升起目标，再折叠其余（勿对目标 setAlpha(0)）
             restoreWindow(wid)
+            activateFrontmostWindow(wid)
+            hideWindowsForSwitch(prevWIDs)
         }
         if let targetAXFrame {
             lastKnownAXWindowFrames[wid] = targetAXFrame
@@ -1733,9 +1730,6 @@ final class WindowOverlayManager {
             finishSwitch()
         } else {
             activateFrontmostWindow(wid)
-            if slotBasedSwitch == false {
-                hideWindowsForSwitch(prevWIDs)
-            }
             finishGroupSwitch()
         }
         let targetOverlayFrame = targetAXFrame.map(cgStyleFrame(fromAXFrame:)) ?? currentOverlayFrame
@@ -1774,11 +1768,9 @@ final class WindowOverlayManager {
         guard completedDragWindowID != srcWID,
               let sourceGroup = GroupStore.shared.group(for: srcWID) else { return }
 
-        let target = highlightedDropTarget(sourceGroupID: sourceGroup.id, sourceWID: srcWID)
-            ?? dropTarget(srcWID: srcWID,
-                          sourceGroupID: sourceGroup.id,
-                          sourceActiveWID: sourceGroup.group.activeWindowID,
-                          screenPoint: screenPoint)
+        let target = dropTarget(srcWID: srcWID,
+                                sourceGroupID: sourceGroup.id,
+                                screenPoint: screenPoint)
         guard let target else { return }
 
         _ = handleDrop(srcWID: srcWID, targetGID: target.groupID)
@@ -1892,7 +1884,9 @@ final class WindowOverlayManager {
         }
 
         if AppSettings.hideMode == .transparent {
-            WindowAlphaController.shared.setAlpha(0, for: sourceWID)
+            restoreWindow(sourceWID)
+            activateFrontmostWindow(sourceWID)
+            hideWindowsForSwitch(mergedGroup.windowIDs.filter { $0 != sourceWID })
         } else {
             if let targetSlotAXFrame {
                 revealIncomingWindowForSwitch(wid: sourceWID, slotFrame: targetSlotAXFrame)
@@ -2393,20 +2387,34 @@ final class WindowOverlayManager {
         }
     }
 
+    /// 标签栏 / 拖放高亮等 UI chrome：命中时应穿透。
+    private func isOrigamiChromeWindow(_ wid: CGWindowID) -> Bool {
+        if let panel = dropHighlightPanel, CGWindowID(panel.windowNumber) == wid {
+            return true
+        }
+        for panel in overlays.values where CGWindowID(panel.windowNumber) == wid {
+            return true
+        }
+        return false
+    }
+
+    /// 落点下最前的真实窗口。
+    /// 使用 optionOnScreenOnly，保证前→后顺序（optionAll 不保证层级顺序）。
     private func windowID(at screenPoint: NSPoint, excluding excluded: Set<CGWindowID>) -> CGWindowID? {
         let screenHeight = cachedScreenHeight > 0
             ? cachedScreenHeight
             : (NSScreen.screens.first?.frame.height ?? 0)
-        guard let list = allWindowList(forceRefresh: false),
-              screenHeight > 0 else { return nil }
+        guard screenHeight > 0,
+              let list = CGWindowListCopyWindowInfo(
+                [.optionOnScreenOnly, .excludeDesktopElements],
+                kCGNullWindowID
+              ) as? [[String: Any]] else { return nil }
 
         let stageManagerBlockingOverlayBounds = stageManagerBlockingOverlayBounds(in: list)
 
         for info in list {
             guard let layer = info[kCGWindowLayer as String] as? Int, layer == 0 else { continue }
-            guard isOwnProcessWindow(info) == false else { continue }
             guard isIgnoredSystemWindow(info) == false else { continue }
-            guard windowListEntryIsOnScreen(info) else { continue }
             guard isStageManagerThumbnail(info, matching: stageManagerBlockingOverlayBounds) == false else { continue }
             guard let wid = info[kCGWindowNumber as String] as? CGWindowID else { continue }
             guard let bounds = info[kCGWindowBounds as String] as? [String: CGFloat] else { continue }
@@ -2415,15 +2423,18 @@ final class WindowOverlayManager {
             let height = bounds["Height"] ?? 0
             guard width >= minLabelWindowWidth && height >= minLabelWindowHeight else { continue }
             guard isWindowMinimizedCached(wid) == false else { continue }
+            // 已折叠窗口不参与遮挡/命中（透明隐藏时仍可能在列表中）
+            guard hiddenWindowIDs.contains(wid) == false else { continue }
 
             let x = bounds["X"] ?? 0
             let y = bounds["Y"] ?? 0
             let frame = NSRect(x: x, y: screenHeight - y - height, width: width, height: height)
             guard frame.contains(screenPoint) else { continue }
 
-            if excluded.contains(wid) {
-                return nil
-            }
+            if excluded.contains(wid) { continue }
+            if isOrigamiChromeWindow(wid) { continue }
+            // 本软件非托管窗口（如设置）参与遮挡：返回后由 dropTarget 判定不可合并则挡住
+
             return wid
         }
         return nil
