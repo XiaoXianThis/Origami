@@ -1,0 +1,10 @@
+# Swift
+.build/
+.swiftpm/
+
+# Packaged output when package.sh runs without $WOK_OUT
+dist/
+
+*.xcodeproj
+*.xcworkspace
+xcuserdata/

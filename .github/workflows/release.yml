@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  mac:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
@@ -19,14 +19,17 @@ jobs:
         run: echo "tag=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
       - name: Build universal package
+        working-directory: apps/mac
+        env:
+          WOK_OUT: ${{ github.workspace }}/build/mac
         run: |
-          chmod +x scripts/package.sh
+          chmod +x scripts/package.sh scripts/generate-app-icon.sh
           ./scripts/package.sh "${{ steps.version.outputs.tag }}"
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/Origami-v${{ steps.version.outputs.tag }}-macos-universal.zip
-            dist/Origami-v${{ steps.version.outputs.tag }}-macos-universal.dmg
+            build/mac/Origami-v${{ steps.version.outputs.tag }}-macos-universal.zip
+            build/mac/Origami-v${{ steps.version.outputs.tag }}-macos-universal.dmg
           generate_release_notes: true

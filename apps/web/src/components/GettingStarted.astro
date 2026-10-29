@@ -1,0 +1,147 @@
+---
+const releaseVersion = '0.1.7';
+const dmgUrl = `https://github.com/XiaoXianThis/Origami/releases/download/v${releaseVersion}/Origami-v${releaseVersion}-macos-universal.dmg`;
+const zipUrl = `https://github.com/XiaoXianThis/Origami/releases/download/v${releaseVersion}/Origami-v${releaseVersion}-macos-universal.zip`;
+const releaseUrl = `https://github.com/XiaoXianThis/Origami/releases/tag/v${releaseVersion}`;
+
+const installSteps = [
+  {
+    title: '下载并安装',
+    detail: '打开 DMG，将 Origami 拖入「应用程序」文件夹。也可下载 zip 手动解压安装。',
+  },
+  {
+    title: '首次打开',
+    detail: '未公证的应用需右键 Origami.app →「打开」→ 再点「打开」。或在系统设置 → 隐私与安全性 中允许。',
+  },
+  {
+    title: '授权辅助功能',
+    detail: '系统设置 → 隐私与安全性 → 辅助功能 → 勾选 Origami。首次启动时也会弹出系统提示。',
+  },
+  {
+    title: '授权输入监控（可选）',
+    detail: '若使用全局快捷键，需在 隐私与安全性 → 输入监控 中勾选 Origami。',
+  },
+];
+
+const usageSteps = [
+  '启动 Origami 后，它会常驻菜单栏',
+  '点击菜单栏图标 →「显示窗口」打开设置',
+  '将窗口拖入同一组，或通过标签栏操作合并 / 切换',
+  '在设置中选择隐藏方式、标签位置等偏好',
+];
+---
+
+<section id="download" class="border-t border-sky-200/50 px-4 py-24 sm:px-6">
+  <div class="mx-auto max-w-6xl min-w-0">
+    <div class="grid min-w-0 gap-12 lg:grid-cols-2">
+      <div>
+        <p class="section-label">Download</p>
+        <h2 class="mt-3 text-3xl font-semibold tracking-tight text-slate-900 md:text-4xl">下载即用</h2>
+        <p class="mt-4 text-lg leading-8 text-slate-600">
+          预构建 Universal 包，Apple Silicon 与 Intel Mac 均可使用。无需 Apple 开发者账号，下载后授权即可运行。
+        </p>
+
+        <div class="mt-8 flex flex-wrap items-center gap-4">
+          <a href={dmgUrl} class="btn-primary">
+            下载 DMG v{releaseVersion}
+          </a>
+          <a href={zipUrl} class="btn-secondary">
+            下载 ZIP
+          </a>
+          <a
+            href={releaseUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn-secondary"
+          >
+            所有版本
+          </a>
+        </div>
+
+        <p class="mt-4 text-sm text-slate-500">
+          系统要求：macOS 13 Ventura 或更高版本
+        </p>
+      </div>
+
+      <div class="glass-card-strong p-6">
+        <h3 class="text-sm font-medium text-slate-700">安装步骤</h3>
+        <ol class="mt-6 space-y-5">
+          {installSteps.map((step, index) => (
+            <li class="flex gap-4">
+              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-100/80 text-sm font-semibold text-cyan-800">
+                {index + 1}
+              </span>
+              <div>
+                <p class="font-medium text-slate-900">{step.title}</p>
+                <p class="mt-1 text-sm leading-6 text-slate-600">{step.detail}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="getting-started" class="border-t border-sky-200/50 px-4 py-24 sm:px-6">
+  <div class="mx-auto max-w-6xl min-w-0">
+    <div class="grid min-w-0 gap-12 lg:grid-cols-2">
+      <div>
+        <p class="section-label">Getting Started</p>
+        <h2 class="mt-3 text-3xl font-semibold tracking-tight text-slate-900 md:text-4xl">几分钟即可上手</h2>
+        <p class="mt-4 text-lg leading-8 text-slate-600">
+          下载预构建包即可使用，也支持从源码构建。Apple Silicon 与 Intel Mac 均可。
+        </p>
+
+        <ol class="mt-8 space-y-4">
+          {usageSteps.map((step, index) => (
+            <li class="flex gap-4">
+              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-100/80 text-sm font-semibold text-cyan-800">
+                {index + 1}
+              </span>
+              <span class="pt-1 text-slate-700">{step}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      <div class="glass-card-strong min-w-0 p-6">
+        <div class="mb-4 flex items-center justify-between">
+          <span class="text-sm font-medium text-slate-700">从源码构建</span>
+          <span class="rounded-full bg-sky-100/80 px-2 py-1 text-xs text-cyan-700">bash</span>
+        </div>
+        <pre class="max-w-full overflow-x-auto rounded-2xl bg-slate-900/90 p-4 text-sm leading-7 text-sky-100 sm:p-5"><code>{`git clone https://github.com/XiaoXianThis/Origami.git
+cd Origami/apps/mac
+./scripts/package.sh 0.1.0
+open ../../build/mac/Origami.app`}</code></pre>
+        <p class="mt-4 text-sm text-slate-600">
+          调试构建可在 <code class="rounded bg-sky-100/80 px-1.5 py-0.5 text-cyan-800">apps/mac</code> 下执行
+          <code class="rounded bg-sky-100/80 px-1.5 py-0.5 text-cyan-800">swift build</code>，产物位于
+          <code class="rounded bg-sky-100/80 px-1.5 py-0.5 text-cyan-800">.build/debug/Origami</code>。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="border-t border-sky-200/50 px-4 py-20 sm:px-6">
+  <div class="mx-auto max-w-4xl min-w-0 rounded-[2rem] border border-cyan-300/40 bg-gradient-to-br from-cyan-100/60 via-white/70 to-blue-100/50 px-5 py-12 text-center shadow-xl shadow-cyan-500/10 backdrop-blur-xl sm:px-8 md:px-12">
+    <h2 class="text-3xl font-semibold tracking-tight text-slate-900">把散落的窗口，折成整齐的一组</h2>
+    <p class="mx-auto mt-4 max-w-2xl text-lg leading-8 text-slate-600">
+      Origami 为重度多窗口用户设计——写代码、查资料、对文档，标签一切换，思路不中断。
+    </p>
+    <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
+      <a href={dmgUrl} class="btn-primary">
+        下载 Origami
+      </a>
+      <a
+        href="https://github.com/XiaoXianThis/Origami"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="btn-secondary"
+      >
+        Star on GitHub
+      </a>
+    </div>
+  </div>
+</section>
