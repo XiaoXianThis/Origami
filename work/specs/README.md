@@ -16,3 +16,4 @@ Requirements, designs, and tasks: documents about work in progress.
 | spec | apps | status |
 |---|---|---|
 | [restructure-to-wokspace](restructure-to-wokspace/requirements.md) | mac, web | done |
+| [win-port-milestone-1](win-port-milestone-1/requirements.md) | win | in progress |

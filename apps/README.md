@@ -15,6 +15,7 @@ Each subdirectory is an independent app that follows its own language's conventi
 |---|---|---|---|
 | mac | the macOS menu bar app: window grouping, overlay tab bar, hide modes | Swift 5.10 / Swift Package Manager | none |
 | web | the product site on Cloudflare Pages, Chinese and English | Astro 7 + Tailwind CSS 4 | mac (release asset names only) |
+| win | the Windows port: window grouping, overlay tab bar, hide modes | C++20 / Win32 / Direct2D | none |
 
 ## App AGENTS.md template
 

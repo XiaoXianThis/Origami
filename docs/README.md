@@ -59,6 +59,7 @@ Origami （/ˌɔːrɪˈɡɑːmi/）是一款 macOS 菜单栏工具，把多个�
 Origami/
 ├── apps/
 │   ├── mac/              # macOS 菜单栏应用（Swift Package）
+│   ├── win/              # Windows 版（C++20 / Win32 / Direct2D，开发中）
 │   └── web/              # 产品介绍站点（Astro + Tailwind CSS）
 ├── build/                # 构建产物，仅提交 README
 ├── docs/                 # 本页、架构说明、决策记录、指南、接口契约
@@ -92,7 +93,20 @@ npm run dev      # 本地预览 http://localhost:4321
 npm run build    # 构建产物输出到 apps/web/dist
 ```
 
-各 app 的完整命令见 [apps/mac/AGENTS.md](../apps/mac/AGENTS.md) 和 [apps/web/AGENTS.md](../apps/web/AGENTS.md)；架构说明见 [docs/architecture/overview.md](architecture/overview.md)。
+Windows 版（需要 Visual Studio 2022 的 C++ 工具链和 Windows SDK）：
+
+```sh
+cd apps/win
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+cmake --build build --config Release
+build\bin\origami.exe
+```
+
+各 app 的完整命令见 [apps/mac/AGENTS.md](../apps/mac/AGENTS.md)、[apps/win/AGENTS.md](../apps/win/AGENTS.md) 和 [apps/web/AGENTS.md](../apps/web/AGENTS.md)；架构说明见 [docs/architecture/overview.md](architecture/overview.md)。
+
+## Windows 版
+
+Windows 版是独立实现，不复用 macOS 源码，目前处于开发中：已完成窗口分组、叠加标签栏、点击切换（切换和合并时会把目标窗口放到上一个窗口的位置和大小）、拖拽合并，以及「最小化」「移动到屏外」两种隐藏方式。它不需要辅助功能一类的授权，但受 UIPI 限制，无法接管以管理员权限运行的窗口。设置窗口、全局快捷键和其余隐藏方式仍在计划中。
 
 ## 发布与部署
 

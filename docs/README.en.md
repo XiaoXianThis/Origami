@@ -59,6 +59,7 @@ The top level is a workspace, not a project in one language. The rules are in [A
 Origami/
 ├── apps/
 │   ├── mac/              # the macOS menu bar app (Swift package)
+│   ├── win/              # the Windows port (C++20 / Win32 / Direct2D, in progress)
 │   └── web/              # the product site (Astro + Tailwind CSS)
 ├── build/                # build output; only its README is committed
 ├── docs/                 # this page, architecture, decision records, guides, contracts
@@ -92,7 +93,20 @@ npm run dev      # preview at http://localhost:4321
 npm run build    # output goes to apps/web/dist
 ```
 
-Full commands per app live in [apps/mac/AGENTS.md](../apps/mac/AGENTS.md) and [apps/web/AGENTS.md](../apps/web/AGENTS.md). How the pieces fit: [docs/architecture/overview.md](architecture/overview.md).
+Windows port (needs the C++ toolchain and Windows SDK from Visual Studio 2022):
+
+```sh
+cd apps/win
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+cmake --build build --config Release
+build\bin\origami.exe
+```
+
+Full commands per app live in [apps/mac/AGENTS.md](../apps/mac/AGENTS.md), [apps/win/AGENTS.md](../apps/win/AGENTS.md), and [apps/web/AGENTS.md](../apps/web/AGENTS.md). How the pieces fit: [docs/architecture/overview.md](architecture/overview.md).
+
+## Windows Port
+
+The Windows app is an independent implementation that shares no source with the macOS app, and it is still in progress. Working today: window grouping, the overlay tab bar, click to switch (switching and merging move the incoming window into the outgoing window's position and size), drag to merge, and the minimize and move-off-screen hide modes. It needs no Accessibility-style permission, but UIPI keeps it away from windows owned by elevated processes. The settings window, the global shortcut, and the remaining hide modes are not there yet.
 
 ## Release and Deploy
 

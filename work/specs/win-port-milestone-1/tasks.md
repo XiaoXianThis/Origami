@@ -1,0 +1,20 @@
+# Tasks
+
+- [x] Scaffold `apps/win` with CMake, MSVC, static CRT, and the wokspace task table
+- [x] Window enumeration with visible frames, filtered titles, and DPI scale
+- [x] Group store with merge, detach, and pruning
+- [x] Layered overlay window with Direct2D painting and per-tab hit testing
+- [x] Event-driven refresh through `SetWinEventHook`
+- [x] Switch, hide, restore, and merge flows
+- [x] Tray menu and settings persistence
+- [x] Drag ghost and drop frame, both click-through
+- [x] Drop on a window body merges, drop on the desktop detaches
+- [x] Keep minimized and off-screen windows in their group
+- [x] Re-assert the foreground after a switch
+- [x] Match the incoming window's frame, on switch and on merge
+- [x] End-to-end drag test (`tests/drag-ui.ps1`) covering click, merge, three-window groups, switching, frame matching, and restore on quit
+- [ ] Settings window
+- [ ] Global tab-switch shortcut
+- [ ] Transparent hide mode and virtual-desktop hide mode
+- [ ] Off-screen recovery list
+- [ ] App icon and code signing
