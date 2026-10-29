@@ -33,3 +33,36 @@ jobs:
             build/mac/Origami-v${{ steps.version.outputs.tag }}-macos-universal.zip
             build/mac/Origami-v${{ steps.version.outputs.tag }}-macos-universal.dmg
           generate_release_notes: true
+
+  win:
+    # Runs after the mac job so both jobs attach to a release that already exists,
+    # instead of racing to create it.
+    needs: mac
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: echo "tag=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        working-directory: apps/win
+        env:
+          WOK_OUT: ${{ github.workspace }}/build/win
+        run: |
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+          cmake --build build --config Release
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.tag }}"
+          Compress-Archive -Path build/win/origami.exe `
+            -DestinationPath "build/win/Origami-v$version-windows-x64.zip" -Force
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/win/Origami-v${{ steps.version.outputs.tag }}-windows-x64.zip

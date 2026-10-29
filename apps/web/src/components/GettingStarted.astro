@@ -1,7 +1,8 @@
 ---
-const releaseVersion = '0.1.7';
+const releaseVersion = '0.1.8';
 const dmgUrl = `https://github.com/XiaoXianThis/Origami/releases/download/v${releaseVersion}/Origami-v${releaseVersion}-macos-universal.dmg`;
 const zipUrl = `https://github.com/XiaoXianThis/Origami/releases/download/v${releaseVersion}/Origami-v${releaseVersion}-macos-universal.zip`;
+const winZipUrl = `https://github.com/XiaoXianThis/Origami/releases/download/v${releaseVersion}/Origami-v${releaseVersion}-windows-x64.zip`;
 const releaseUrl = `https://github.com/XiaoXianThis/Origami/releases/tag/v${releaseVersion}`;
 
 const installSteps = [
@@ -48,6 +49,9 @@ const usageSteps = [
           <a href={zipUrl} class="btn-secondary">
             下载 ZIP
           </a>
+          <a href={winZipUrl} class="btn-secondary">
+            下载 Windows 版
+          </a>
           <a
             href={releaseUrl}
             target="_blank"
@@ -60,6 +64,9 @@ const usageSteps = [
 
         <p class="mt-4 text-sm text-slate-500">
           系统要求：macOS 13 Ventura 或更高版本
+        </p>
+        <p class="mt-1 text-sm text-slate-500">
+          Windows：Windows 10/11 x64，免安装，解压后运行 origami.exe
         </p>
       </div>
 

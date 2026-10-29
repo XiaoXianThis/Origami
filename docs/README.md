@@ -27,12 +27,14 @@ Origami （/ˌɔːrɪˈɡɑːmi/）是一款 macOS 菜单栏工具，把多个�
 
 ## 系统要求
 
-- macOS 13 Ventura 或更高版本
-- Apple Silicon 或 Intel Mac
+- macOS 13 Ventura 或更高版本，Apple Silicon 或 Intel Mac
+- Windows 10 或 Windows 11，x64
 
 ## 下载安装
 
 [Latest release](https://github.com/XiaoXianThis/Origami/releases/latest)
+
+**macOS**
 
 1. 从 GitHub Releases 下载 DMG（推荐）或 ZIP
 2. **DMG**：打开镜像，将 Origami 拖入「应用程序」；**ZIP**：解压后将 `Origami.app` 拖入「应用程序」
@@ -42,11 +44,20 @@ Origami （/ˌɔːrɪˈɡɑːmi/）是一款 macOS 菜单栏工具，把多个�
 
 > 预构建包使用 ad-hoc 签名，无需 Apple 开发者账号。首次打开时 macOS 可能提示「无法验证开发者」，按上述步骤即可。
 
+**Windows**
+
+1. 下载 `Origami-v{版本}-windows-x64.zip`
+2. 解压到任意目录，双击 `origami.exe` 即可，没有安装程序，也不需要额外运行时
+3. 首次运行若出现「Windows 已保护你的电脑」，点「更多信息 → 仍要运行」（尚未代码签名）
+4. 程序常驻托盘，右键托盘图标可切换隐藏方式、复原窗口或退出
+
+> Windows 版不需要辅助功能一类的授权；受 UIPI 限制，无法接管以管理员权限运行的窗口。
+
 细节与排错见 [docs/guides/install.md](guides/install.md)。
 
 ## 使用
 
-1. 启动 Origami 后，它会常驻菜单栏
+1. 启动 Origami 后，它会常驻菜单栏（Windows 版常驻托盘）
 2. 点击菜单栏图标 → **显示窗口** 打开设置
 3. 将窗口拖入同一组，或通过标签栏操作合并 / 切换
 4. 在设置中按需选择隐藏方式、标签位置等
@@ -59,7 +70,7 @@ Origami （/ˌɔːrɪˈɡɑːmi/）是一款 macOS 菜单栏工具，把多个�
 Origami/
 ├── apps/
 │   ├── mac/              # macOS 菜单栏应用（Swift Package）
-│   ├── win/              # Windows 版（C++20 / Win32 / Direct2D，开发中）
+│   ├── win/              # Windows 版（C++20 / Win32 / Direct2D）
 │   └── web/              # 产品介绍站点（Astro + Tailwind CSS）
 ├── build/                # 构建产物，仅提交 README
 ├── docs/                 # 本页、架构说明、决策记录、指南、接口契约
@@ -106,7 +117,9 @@ build\bin\origami.exe
 
 ## Windows 版
 
-Windows 版是独立实现，不复用 macOS 源码，目前处于开发中：已完成窗口分组、叠加标签栏、点击切换（切换和合并时会把目标窗口放到上一个窗口的位置和大小）、拖拽合并，以及「最小化」「移动到屏外」两种隐藏方式。它不需要辅助功能一类的授权，但受 UIPI 限制，无法接管以管理员权限运行的窗口。设置窗口、全局快捷键和其余隐藏方式仍在计划中。
+Windows 版是独立实现，不复用 macOS 源码。已支持：窗口分组与叠加标签栏、点击切换（切换和合并时会把目标窗口放到上一个窗口的位置和大小）、拖拽合并与拖出拆分、标签文字省略号截断，以及「最小化」「移动到屏外」两种隐藏方式。它不需要辅助功能一类的授权，但受 UIPI 限制，无法接管以管理员权限运行的窗口。
+
+尚未实现：设置窗口（目前用托盘菜单）、全局快捷键、透明隐藏与虚拟桌面隐藏、屏外窗口恢复列表、应用图标与代码签名。工程说明见 [apps/win/AGENTS.md](../apps/win/AGENTS.md)。
 
 ## 发布与部署
 

@@ -14,3 +14,4 @@ Contracts between apps. This is the only source-level agreement apps share.
 | contract | provider | consumers |
 |---|---|---|
 | [mac-release-assets.md](mac-release-assets.md) | mac | web |
+| [win-release-assets.md](win-release-assets.md) | win | web |

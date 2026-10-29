@@ -13,6 +13,8 @@
 - [x] Re-assert the foreground after a switch
 - [x] Match the incoming window's frame, on switch and on merge
 - [x] End-to-end drag test (`tests/drag-ui.ps1`) covering click, merge, three-window groups, switching, frame matching, and restore on quit
+- [x] Publish the Windows zip from the release workflow
+- [x] Offer the Windows download on the site and document it
 - [ ] Settings window
 - [ ] Global tab-switch shortcut
 - [ ] Transparent hide mode and virtual-desktop hide mode

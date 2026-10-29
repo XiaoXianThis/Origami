@@ -4,9 +4,9 @@ export const zh: Translations = {
   locale: 'zh',
   langLabel: '中文',
   meta: {
-    title: 'Origami — macOS 窗口分组与无痕切换',
+    title: 'Origami — 窗口分组与无痕切换（macOS / Windows）',
     description:
-      'Origami 把多个 macOS 窗口像浏览器标签页一样折叠成组，叠加标签栏，实现快速、无痕的窗口切换。',
+      'Origami 把多个应用窗口像浏览器标签页一样折叠成组，叠加标签栏，实现快速、无痕的窗口切换。提供 macOS 与 Windows 版。',
     themeColor: '#E0F2F7',
   },
   header: {
@@ -19,7 +19,7 @@ export const zh: Translations = {
     githubAria: 'GitHub 仓库',
   },
   hero: {
-    badge: 'macOS 13+ · 菜单栏工具 · 开源',
+    badge: 'macOS 13+ · Windows 10/11 · 开源',
     titlePrefix: '像折纸一样，',
     titleHighlight: '把窗口叠成一组',
     description:
@@ -124,6 +124,8 @@ export const zh: Translations = {
     downloadLead: 'Universal 包，Apple Silicon 与 Intel 均可。无需开发者账号，授权即可运行。',
     downloadDmg: '下载 DMG',
     downloadZip: 'ZIP',
+    downloadWin: '下载 Windows 版',
+    downloadWinReq: 'Windows 10/11 x64 · 免安装，解压后运行 origami.exe',
     allReleases: '所有版本',
     downloadReq: 'macOS 13 Ventura 或更高版本',
     installSteps: [

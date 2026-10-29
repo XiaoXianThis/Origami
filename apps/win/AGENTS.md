@@ -20,6 +20,8 @@ Commands run in `apps/win/`. This app builds on Windows only, so the commands li
 
 `test` is the compile check. `ui` is the end-to-end drag test: it opens three throwaway windows, clicks and drags real tab bars, and checks merging, switching, and restoring on quit. It controls the mouse for a few seconds and edits `settings.ini` (restored afterwards), so run it on an idle desktop. `-HideMode minimize` covers the other hide mode.
 
+Releases are built by the `win` job of `.github/workflows/release.yml`: CMake Release build, then `origami.exe` zipped as `Origami-v<version>-windows-x64.zip` and attached to the tag's release. See `docs/api/win-release-assets.md`.
+
 ## Layout
 
 ```

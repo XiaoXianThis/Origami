@@ -80,13 +80,15 @@ Where it deliberately differs from the macOS engine:
 - **Dragging** shows a click-through ghost and a frame over the merge target; dropping on a window body merges, dropping on the desktop detaches.
 - **Switching and merging move the incoming window into the outgoing window's frame** (visible bounds, same position), which is what makes a group feel like one window with tabs. A maximized outgoing window maximizes the incoming one. Turn it off with `match_window_frame=0` or the tray menu.
 
-Measured on Windows 11 23H2 with seven managed windows: 167 KB exe, 11 MB private working set, 38 MB working set including shared DLL pages, and idle CPU below one 15.6 ms timer tick over 15 s.
+Measured on Windows 11 23H2 with seven managed windows: 219 KB exe, 11 MB private working set, 38 MB working set including shared DLL pages, and idle CPU below one 15.6 ms timer tick over 15 s.
+
+The app is published as `Origami-v<version>-windows-x64.zip`, built by the `win` job of the release workflow; see [win-release-assets.md](../api/win-release-assets.md).
 
 ## apps/web
 
 A static Astro site with Tailwind CSS, deployed to Cloudflare Pages. Chinese is the default language; `src/pages/en/index.astro` is the English page. All copy lives in `src/i18n/zh.ts` and `src/i18n/en.ts`, and both must stay in step.
 
-Two components hold the released version as a literal: `GettingStarted.astro` and `ProductShowcase.astro` (`releaseVersion`). They build the DMG, ZIP, and release-page URLs from it, so they must be bumped together with a new tag. `MacOSDemo.astro` is a JavaScript re-creation of the tab bar, used as an interactive demo; it is independent of the app's code.
+Two components hold the released version as a literal: `GettingStarted.astro` and `ProductShowcase.astro` (`releaseVersion`). They build the mac DMG/ZIP, the Windows ZIP, and the release-page URLs from it, so they must be bumped together with a new tag. `MacOSDemo.astro` is a JavaScript re-creation of the tab bar, used as an interactive demo; it is independent of the app's code.
 
 ## Release pipeline
 
@@ -94,14 +96,18 @@ Two components hold the released version as a literal: `GettingStarted.astro` an
 sequenceDiagram
   participant dev
   participant gh as GitHub
-  participant ci as Actions (macos-14)
+  participant mac as Actions (macos-14)
+  participant win as Actions (windows-latest)
   participant rel as Releases
   participant cf as Cloudflare Pages
   dev->>gh: push tag vX.Y.Z
-  gh->>ci: run release.yml
-  ci->>ci: apps/mac/scripts/package.sh X.Y.Z
-  ci->>rel: build/mac/*.zip, *.dmg
+  gh->>mac: run release.yml
+  mac->>mac: apps/mac/scripts/package.sh X.Y.Z
+  mac->>rel: build/mac/*.zip, *.dmg
+  mac-->>win: needs: mac
+  win->>win: cmake build apps/win, zip the exe
+  win->>rel: build/win/*.zip
   dev->>cf: npm run build, wrangler pages deploy
 ```
 
-The workflow only publishes the macOS build. The site is deployed separately with Wrangler; its build settings are Root directory `apps/web`, build command `npm run build`, output `dist`. Steps for both are in `docs/guides/release.md`.
+The workflow publishes both platforms; the Windows job depends on the mac job so both attach to a release that already exists. The site is deployed separately with Wrangler; its build settings are Root directory `apps/web`, build command `npm run build`, output `dist`. Steps for both are in `docs/guides/release.md`.

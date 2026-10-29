@@ -84,6 +84,8 @@ export type Translations = {
     downloadLead: string;
     downloadDmg: string;
     downloadZip: string;
+    downloadWin: string;
+    downloadWinReq: string;
     allReleases: string;
     downloadReq: string;
     installSteps: InstallStep[];

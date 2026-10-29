@@ -4,9 +4,9 @@ export const en: Translations = {
   locale: 'en',
   langLabel: 'English',
   meta: {
-    title: 'Origami — macOS Window Grouping & Seamless Switching',
+    title: 'Origami — Window Grouping & Seamless Switching for macOS and Windows',
     description:
-      'Origami groups multiple macOS windows like browser tabs with an overlay tab bar for fast, seamless window switching.',
+      'Origami groups multiple app windows like browser tabs with an overlay tab bar for fast, seamless window switching. Available for macOS and Windows.',
     themeColor: '#E0F2F7',
   },
   header: {
@@ -19,7 +19,7 @@ export const en: Translations = {
     githubAria: 'GitHub repository',
   },
   hero: {
-    badge: 'macOS 13+ · Menu Bar App · Open Source',
+    badge: 'macOS 13+ · Windows 10/11 · Open Source',
     titlePrefix: 'Like origami, ',
     titleHighlight: 'fold windows into one group',
     description:
@@ -125,6 +125,8 @@ export const en: Translations = {
     downloadLead: 'Universal build for Apple Silicon and Intel. No developer account needed — just grant permissions after install.',
     downloadDmg: 'Download DMG',
     downloadZip: 'ZIP',
+    downloadWin: 'Download for Windows',
+    downloadWinReq: 'Windows 10/11 x64 · no install, unzip and run origami.exe',
     allReleases: 'All releases',
     downloadReq: 'macOS 13 Ventura or later',
     installSteps: [

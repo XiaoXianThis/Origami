@@ -17,11 +17,14 @@ Both are universal binaries (arm64 and x86_64) inside an ad-hoc signed `Origami.
 
 ## Consumers
 
-`apps/web/src/components/GettingStarted.astro` and `ProductShowcase.astro` build these URLs from `releaseVersion`:
+`apps/web/src/components/ProductShowcase.astro` builds these URLs from `releaseVersion`:
 
 ```
 https://github.com/XiaoXianThis/Origami/releases/download/v<version>/Origami-v<version>-macos-universal.dmg
+https://github.com/XiaoXianThis/Origami/releases/download/v<version>/Origami-v<version>-macos-universal.zip
 ```
+
+The Windows build is published by the same workflow from `apps/win`; see [win-release-assets.md](win-release-assets.md).
 
 ## Changing the contract
 

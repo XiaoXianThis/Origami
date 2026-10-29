@@ -29,7 +29,7 @@ git push origin HEAD
 
 ## 3. Publish the build
 
-Pushing a tag runs `.github/workflows/release.yml` on `macos-14`, which calls `apps/mac/scripts/package.sh` and uploads the assets from `build/mac/`:
+Pushing a tag runs `.github/workflows/release.yml`. It has two jobs: `mac` on `macos-14` calls `apps/mac/scripts/package.sh`, and `win` on `windows-latest` builds `apps/win` with CMake and packs the exe. Both upload to the same release; the Windows job waits for the mac one so the release already exists.
 
 ```sh
 git tag vX.Y.Z
@@ -45,6 +45,15 @@ cd apps/mac
 
 The packaged bundle lands in `build/mac/Origami.app`, next to `Origami-vX.Y.Z-macos-universal.zip` and `.dmg`.
 
+The Windows asset is `Origami-vX.Y.Z-windows-x64.zip` and contains a single `origami.exe`. To reproduce it:
+
+```powershell
+cd apps/win
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+cmake --build build --config Release
+Compress-Archive -Path build/win/origami.exe -DestinationPath build/win/Origami-vX.Y.Z-windows-x64.zip -Force
+```
+
 ## 4. Deploy the site
 
 ```sh
@@ -57,6 +66,6 @@ npx wrangler pages deploy dist --project-name origami
 
 ## Done when
 
-- [ ] GitHub Releases shows `vX.Y.Z` with the universal ZIP and DMG
+- [ ] GitHub Releases shows `vX.Y.Z` with the mac ZIP and DMG and the Windows ZIP
 - [ ] Cloudflare Pages deployed the new build
-- [ ] Both download buttons on the site point at the new version
+- [ ] All download buttons on the site point at the new version

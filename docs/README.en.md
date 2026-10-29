@@ -27,12 +27,14 @@ Origami (/ˌɔːrɪˈɡɑːmi/) is a macOS menu bar app that groups multiple app
 
 ## Requirements
 
-- macOS 13 Ventura or later
-- Apple Silicon or Intel Mac
+- macOS 13 Ventura or later, Apple Silicon or Intel Mac
+- Windows 10 or Windows 11, x64
 
 ## Download & Install
 
 [Latest release](https://github.com/XiaoXianThis/Origami/releases/latest)
+
+**macOS**
 
 1. Download the DMG (recommended) or ZIP from GitHub Releases
 2. **DMG**: Open the image and drag Origami into Applications; **ZIP**: Unzip and drag `Origami.app` into Applications
@@ -42,11 +44,20 @@ Origami (/ˌɔːrɪˈɡɑːmi/) is a macOS menu bar app that groups multiple app
 
 > Pre-built packages use ad-hoc signing — no Apple Developer account needed. macOS may warn that the developer cannot be verified on first launch; follow the steps above.
 
+**Windows**
+
+1. Download `Origami-v{version}-windows-x64.zip`
+2. Unzip it anywhere and run `origami.exe`. There is no installer and no runtime to install
+3. If SmartScreen warns on first launch, choose **More info → Run anyway** (the build is not code signed yet)
+4. The app lives in the notification area; right-click the tray icon to switch hide mode, restore windows, or quit
+
+> The Windows build needs no Accessibility-style permission. UIPI keeps it away from windows owned by elevated processes.
+
 Details and troubleshooting: [docs/guides/install.md](guides/install.md).
 
 ## Usage
 
-1. After launching, Origami lives in the menu bar
+1. After launching, Origami lives in the menu bar (the notification area on Windows)
 2. Click the menu bar icon → **Show Window** to open settings
 3. Drag windows into a group, or merge / switch via the tab bar
 4. Choose hide mode, tab placement, and other preferences in settings
@@ -59,7 +70,7 @@ The top level is a workspace, not a project in one language. The rules are in [A
 Origami/
 ├── apps/
 │   ├── mac/              # the macOS menu bar app (Swift package)
-│   ├── win/              # the Windows port (C++20 / Win32 / Direct2D, in progress)
+│   ├── win/              # the Windows app (C++20 / Win32 / Direct2D)
 │   └── web/              # the product site (Astro + Tailwind CSS)
 ├── build/                # build output; only its README is committed
 ├── docs/                 # this page, architecture, decision records, guides, contracts
@@ -106,7 +117,9 @@ Full commands per app live in [apps/mac/AGENTS.md](../apps/mac/AGENTS.md), [apps
 
 ## Windows Port
 
-The Windows app is an independent implementation that shares no source with the macOS app, and it is still in progress. Working today: window grouping, the overlay tab bar, click to switch (switching and merging move the incoming window into the outgoing window's position and size), drag to merge, and the minimize and move-off-screen hide modes. It needs no Accessibility-style permission, but UIPI keeps it away from windows owned by elevated processes. The settings window, the global shortcut, and the remaining hide modes are not there yet.
+The Windows app is an independent implementation that shares no source with the macOS app. Working today: window grouping, the overlay tab bar, click to switch (switching and merging move the incoming window into the outgoing window's position and size), drag to merge and drag out to split, ellipsis truncation for long titles, and the minimize and move-off-screen hide modes. It needs no Accessibility-style permission, but UIPI keeps it away from windows owned by elevated processes.
+
+Still missing: a settings window (the tray menu covers it for now), the global shortcut, transparent and virtual-desktop hide modes, the off-screen recovery list, an app icon, and code signing. Build notes: [apps/win/AGENTS.md](../apps/win/AGENTS.md).
 
 ## Release and Deploy
 

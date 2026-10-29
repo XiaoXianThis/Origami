@@ -62,9 +62,10 @@ const modes = s.modes.map((mode, index) => ({
   icon: modeIcons[index],
 }));
 
-const releaseVersion = '0.1.7';
+const releaseVersion = '0.1.8';
 const dmgUrl = `https://github.com/XiaoXianThis/Origami/releases/download/v${releaseVersion}/Origami-v${releaseVersion}-macos-universal.dmg`;
 const zipUrl = `https://github.com/XiaoXianThis/Origami/releases/download/v${releaseVersion}/Origami-v${releaseVersion}-macos-universal.zip`;
+const winZipUrl = `https://github.com/XiaoXianThis/Origami/releases/download/v${releaseVersion}/Origami-v${releaseVersion}-windows-x64.zip`;
 const releaseUrl = `https://github.com/XiaoXianThis/Origami/releases/tag/v${releaseVersion}`;
 
 const installSteps = s.installSteps.map((step, index) => ({
@@ -232,11 +233,13 @@ const marqueeFeatures = [...features, ...features];
             {s.downloadDmg} v{releaseVersion}
           </a>
           <a href={zipUrl} class="btn-secondary">{s.downloadZip}</a>
+          <a href={winZipUrl} class="btn-secondary">{s.downloadWin}</a>
           <a href={releaseUrl} target="_blank" rel="noopener noreferrer" class="btn-secondary">
             {s.allReleases}
           </a>
         </div>
         <p class="showcase-download-req">{s.downloadReq}</p>
+        <p class="showcase-download-req">{s.downloadWinReq}</p>
 
         <ol class="showcase-install">
           {installSteps.map((step, index) => (
